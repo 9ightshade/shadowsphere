@@ -1,6 +1,7 @@
 import BalanceCard from "./components/BalanceCard";
 import WalletStats from "./components/WalletStats";
 import TransactionList from "./components/TransactionList";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 // import { Transaction } from "./types";
 
 const mockTransactions = [
@@ -28,17 +29,23 @@ const mockTransactions = [
 ];
 
 export default function WalletPage() {
+  const { publicKey, connected, disconnect } = useWallet();
+
   return (
     <div className="flex flex-col gap-8">
       <BalanceCard balance={1245.5} />
 
-      <WalletStats
-        sent={150}
-        received={275}
-        fees={8}
-      />
+      <WalletStats sent={150} received={275} fees={8} />
 
       <TransactionList transactions={mockTransactions} />
+      {connected && (
+        <>
+          <p>Address:</p>
+          <p className="break-all">{publicKey?.toString()}</p>
+
+          <button onClick={disconnect}>Disconnect</button>
+        </>
+      )}
     </div>
   );
 }

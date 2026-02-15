@@ -1,6 +1,7 @@
 import { useWalletAuthStore } from "../../../store/useWalletAuthStore";
 import { useNavigate } from "react-router-dom";
 
+
 export default function ConnectWalletButton() {
   const { connect, isConnected, address } = useWalletAuthStore();
   const navigate = useNavigate();
@@ -22,7 +23,7 @@ export default function ConnectWalletButton() {
   return (
     <button
       onClick={handleConnect}
-      className="px-8 py-4 rounded-2xl bg-[var(--color-primary)]
+      className="px-8 py-4 cursor-pointer rounded-2xl bg-[var(--color-primary)]
                  text-white text-lg font-semibold
                  hover:scale-105 transition-transform">
       Connect Wallet

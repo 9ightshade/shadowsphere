@@ -1,16 +1,22 @@
-import { Navigate } from "react-router-dom"
-import { useWalletAuthStore } from "../store/useWalletAuthStore"
+// components/ProtectedRoute.tsx
 
-export default function ProtectedRoute({
-  children,
-}: {
-  children: React.ReactNode
-}) {
-  const { isConnected } = useWalletAuthStore()
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+import { Navigate } from "react-router-dom";
 
-  if (!isConnected) {
-    return <Navigate to="/" replace />
+export default function ProtectedRoute({ children }) {
+  const { connected, connecting } = useWallet();
+
+  if (connecting) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        Connecting wallet...
+      </div>
+    );
   }
 
-  return <>{children}</>
+  if (!connected) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
 }

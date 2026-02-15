@@ -11,6 +11,7 @@ import FriendsPage from "./features/friends/FriendsPage";
 import GiftingPage from "./features/gifting/GiftingPage";
 import ProfilePage from "./features/profile/ProfilePage";
 
+
 function App() {
   return (
     <>
