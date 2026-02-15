@@ -15,22 +15,21 @@ import { LeoWalletAdapter } from "@provablehq/aleo-wallet-adaptor-leo";
 import { FoxWalletAdapter } from "@provablehq/aleo-wallet-adaptor-fox";
 import { SoterWalletAdapter } from "@provablehq/aleo-wallet-adaptor-soter";
 import { PuzzleWalletAdapter } from "@provablehq/aleo-wallet-adaptor-puzzle";
+import { ShieldWalletAdapter } from "@provablehq/aleo-wallet-adaptor-shield";
 
-import {
-  DecryptPermission,
-
-} from "@provablehq/aleo-wallet-adaptor-core";
+import { DecryptPermission } from "@provablehq/aleo-wallet-adaptor-core";
 
 const network = "testnet";
 
 const wallets = [
+  new ShieldWalletAdapter({ appName: "ShadowSphere" }),
   new LeoWalletAdapter({ appName: "ShadowSphere" }),
   new FoxWalletAdapter({ appName: "ShadowSphere" }),
   new SoterWalletAdapter({ appName: "ShadowSphere" }),
   new PuzzleWalletAdapter({
     appName: "ShadowSphere",
     programIdPermissions: {
-      [network]: [],
+      AleoTestnet: [],
     },
   }),
 ];
