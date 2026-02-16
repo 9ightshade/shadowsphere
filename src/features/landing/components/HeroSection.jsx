@@ -1,19 +1,16 @@
 import { WalletMultiButton } from "@provablehq/aleo-wallet-adaptor-react-ui";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { useState, useEffect } from "react";
-
-function sha256(message, salt = "") {
-  const saltedMsg = salt + message;
-
-  const msgBuffer = new TextEncoder().encode(saltedMsg);
-  return crypto.subtle.digest("SHA-256", msgBuffer).then((hashBuffer) => {
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
-  });
-}
+import { stringToField } from "../../../lib/stringToField";
 
 export default function HeroSection() {
-  const { connected, address, requestRecords } = useWallet();
+  const {
+    connected,
+    address,
+    requestRecords,
+    executeTransaction,
+    transactionStatus,
+  } = useWallet();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [secret, setSecret] = useState("");
@@ -22,7 +19,6 @@ export default function HeroSection() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [isFetchingRecords, setIsFetchingRecords] = useState(false);
 
-  // console.log("wallet",wallet);
   const fetchUserRecords = async () => {
     // 1. Safety Guard: Ensure wallet is connected and publicKey is ready
     if (!connected || !address) {
@@ -32,6 +28,7 @@ export default function HeroSection() {
 
     setIsFetchingRecords(true);
     try {
+      setIsFetchingRecords(!isFetchingRecords);
       // 2. The Async Call
       // requestRecords is provided by the useWallet() hook
       const records = await requestRecords("shadowsphere_social.aleo");
@@ -73,23 +70,49 @@ export default function HeroSection() {
 
     setIsSubmitting(true);
 
-    // We use the full string representation of the wallet address as the salt
-    const walletSalt = address.toString();
-
     try {
       // Production hashing: Salt + Data
-      const usernameHash = await sha256(
-        username.trim().toLowerCase(),
-        walletSalt,
-      );
-      const secretHash = await sha256(secret.trim().toLowerCase(), walletSalt);
 
-      setHashedData({ usernameHash, secretHash });
+      const secretField = await stringToField(secret.trim());
+      const usernameField = await stringToField(username.trim().toLowerCase());
+
+      console.log("secret field", secretField);
+      console.log("user field", usernameField);
+
+      const txId = await executeTransaction({
+        program: "shadowsphere_social.aleo",
+        function: "register",
+        inputs: [secretField, usernameField],
+        fee: 100000,
+        privateFee: false,
+      });
+
+      // console.log("txId", txId);
+
+      let status;
+      let confirmed = false;
+
+      while (!confirmed) {
+        await new Promise((r) => setTimeout(r, 3000));
+
+        status = await transactionStatus(txId.transactionId);
+
+        console.log("Current status:", status.status);
+
+        if (status.status === "Accepted") {
+          confirmed = true;
+          console.log("On-chain TX ID:", status.transactionId);
+        }
+      }
+
       setShowSuccess(true);
 
-      console.log("Unique Identity Hash Generated for:", walletSalt);
+      setTimeout(async () => {
+        const records = await requestRecords("shadowsphere_social.aleo");
+        console.log("Updated records:", records);
+      }, 12000);
     } catch (error) {
-      console.error("Hashing failed:", error);
+      console.error("registration failed:", error);
     } finally {
       setIsSubmitting(false);
       setTimeout(() => setShowSuccess(false), 3000);
