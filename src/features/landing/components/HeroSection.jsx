@@ -13,31 +13,68 @@ function sha256(message, salt = "") {
 }
 
 export default function HeroSection() {
-  const { connected, publicKey } = useWallet();
+  const { connected, address, requestRecords } = useWallet();
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [secret, setSecret] = useState("");
   const [hashedData, setHashedData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [isFetchingRecords, setIsFetchingRecords] = useState(false);
+
+  // console.log("wallet",wallet);
+  const fetchUserRecords = async () => {
+    // 1. Safety Guard: Ensure wallet is connected and publicKey is ready
+    if (!connected || !address) {
+      console.error("Wallet not connected");
+      return;
+    }
+
+    setIsFetchingRecords(true);
+    try {
+      // 2. The Async Call
+      // requestRecords is provided by the useWallet() hook
+      const records = await requestRecords("shadowsphere_social.aleo");
+
+      console.log("Records:", records);
+
+      // Optional: Filter for unspent records if needed
+      // const unspent = records.filter(r => !r.spent);
+
+      return records;
+    } catch (error) {
+      console.error("Error fetching Aleo records:", error);
+    } finally {
+      setIsFetchingRecords(false);
+    }
+  };
 
   useEffect(() => {
-    if (!connected) {
+    if (!connected && !address) {
       setHashedData(null);
       setUsername("");
       setSecret("");
       setShowSuccess(false);
+    } else {
+      fetchUserRecords();
     }
-  }, [connected]);
+  }, [connected, address]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!publicKey) return;
+
+    if (!address && connected) {
+      console.error("Wallet connected but public key not yet available.");
+      return;
+    }
+    console.log("pubkey", address);
+
+    // if (!publicKey) return;
 
     setIsSubmitting(true);
 
     // We use the full string representation of the wallet address as the salt
-    const walletSalt = publicKey.toString();
+    const walletSalt = address.toString();
 
     try {
       // Production hashing: Salt + Data
@@ -270,8 +307,8 @@ export default function HeroSection() {
             <div className="mt-6 flex items-center justify-center gap-2 text-sm text-gray-500">
               <span className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Connected: {publicKey?.toString().slice(0, 8)}...
-                {publicKey?.toString().slice(-6)}
+                Connected: {address?.toString().slice(0, 8)}...
+                {address?.toString().slice(-6)}
               </span>
             </div>
           </div>
