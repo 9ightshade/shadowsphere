@@ -1,7 +1,11 @@
 import { Bell, ShieldCheck } from "lucide-react";
 import Badge from "../ui/Badge";
-
+import { useNavigate } from "react-router-dom";
+import { WalletDisconnectButton } from "@provablehq/aleo-wallet-adaptor-react-ui";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 export default function Topbar() {
+  const { connected } = useWallet();
+  const navigate = useNavigate();
   return (
     <header className="relative h-16 border-b border-[var(--color-border)] bg-[var(--color-surface-2)] flex items-center justify-between px-6 overflow-hidden topbar-root">
       {/* Gradient bottom border */}
@@ -16,15 +20,32 @@ export default function Topbar() {
           Welcome back
         </p>
         <div className="flex items-center gap-1.5 mt-0.5">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          <p className="text-sm font-semibold text-[var(--color-text-primary)] tracking-tight">
-            You're online
-          </p>
+          {connected && (
+            <div className="flex items-center gap-1.5">
+              <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+              <p className="text-sm font-semibold text-[var(--color-text-primary)] tracking-tight">
+                You're online
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* ── Right: Actions ───────────────────────────── */}
       <div className="relative z-10 flex items-center gap-3 topbar-right">
+        {/* Wallet Connection Button */}
+        <div
+          className="aleo-wallet-wrapper aleo-wallet-modal aleo-wallet-modal-overlay scale-90 origin-right"
+          onClick={() => {
+            console.log("disconnect");
+            navigate("/");
+          }}>
+          <WalletDisconnectButton />
+        </div>
+
+        {/* Divider */}
+        <div className="w-px h-6 bg-gradient-to-b from-transparent via-[var(--color-border)] to-transparent" />
+
         {/* Notification bell */}
         <button className="group relative p-2.5 rounded-xl border border-transparent hover:border-indigo-500/30 hover:bg-indigo-500/10 active:scale-95 transition-all duration-300">
           <Bell
@@ -57,6 +78,22 @@ export default function Topbar() {
       </div>
 
       <style jsx>{`
+        .aleo-wallet-wrapper .aleo-main-button {
+          background-color: rgba(99, 102, 241, 0.1) !important;
+          border: 1px solid rgba(99, 102, 241, 0.2) !important;
+          color: #a5b4fc !important;
+          border-radius: 12px !important;
+          font-family: inherit !important;
+          font-size: 13px !important;
+          font-weight: 600 !important;
+          transition: all 0.3s ease !important;
+        }
+
+        .aleo-wallet-wrapper .aleo-main-button:hover {
+          background-color: rgba(99, 102, 241, 0.2) !important;
+          border-color: rgba(99, 102, 241, 0.4) !important;
+          box-shadow: 0 0 15px rgba(99, 102, 241, 0.15);
+        }
         @keyframes fadeSlideDown {
           from {
             opacity: 0;

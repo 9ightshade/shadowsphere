@@ -40,7 +40,15 @@ body {
     font-family: ui-sans-serif, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
 }
+/* Ensure the Aleo Wallet Modal sits on top of everything */
+.aleo-wallet-modal {
+    z-index: 9999 !important;
+}
 
+/* Sometimes the backdrop/overlay needs a boost too */
+.aleo-wallet-modal-overlay {
+    z-index: 9998 !important;
+}
 /* Scrollbar */
 ::-webkit-scrollbar {
     width: 6px;

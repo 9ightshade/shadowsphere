@@ -34,7 +34,7 @@ export default function HeroSection() {
       setIsFetchingRecords(!isFetchingRecords);
       // 2. The Async Call
       // requestRecords is provided by the useWallet() hook
-      const records = await requestRecords("shadowsphere_social3.aleo");
+      const records = await requestRecords("shadowsphere_social4.aleo");
 
       console.log("Records:", records);
 
@@ -78,7 +78,7 @@ export default function HeroSection() {
       let tx;
       if (functionName === "register") {
         tx = await executeTransaction({
-          program: "shadowsphere_social3.aleo",
+          program: "shadowsphere_social4.aleo",
           function: functionName,
           inputs: [ usernameField],
           fee: 100000,
@@ -86,7 +86,7 @@ export default function HeroSection() {
         });
       } else {
         // 1️⃣ Fetch records
-        const records = await requestRecords("shadowsphere_social3.aleo");
+        const records = await requestRecords("shadowsphere_social4.aleo");
 
         const activeRecords = records.filter(
           (r) => !r.spent && r.recordName === "UserSecret",
@@ -102,7 +102,7 @@ export default function HeroSection() {
 
         // 2️⃣ Execute verify_login with correct types  
         tx = await executeTransaction({
-          program: "shadowsphere_social3.aleo",
+          program: "shadowsphere_social4.aleo",
           function: "verify_login",
           inputs: [
             address, 
