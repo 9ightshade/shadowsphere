@@ -37,7 +37,7 @@ const mockTransactions = [
 ];
 
 export default function WalletPage() {
-  const { address, connected, disconnect, connect } = useWallet();
+  const { address, connected,} = useWallet();
 
   return (
     <div className="relative flex flex-col gap-6 wallet-root">
@@ -78,7 +78,7 @@ export default function WalletPage() {
           <p className="font-mono text-xs text-[var(--color-text-primary)] break-all bg-black/20 px-3 py-2.5 rounded-xl border border-[var(--color-border)]">
             {address?.toString()}
           </p>
-
+{/* 
           <button
             onClick={() => (connected ? disconnect() : connect())}
             className="group flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold
@@ -90,7 +90,7 @@ export default function WalletPage() {
               className="group-hover:rotate-12 transition-transform duration-300"
             />
             Disconnect Wallet
-          </button>
+          </button> */}
         </div>
       )}
 
