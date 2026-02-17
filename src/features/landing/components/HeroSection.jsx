@@ -14,7 +14,7 @@ export default function HeroSection() {
   } = useWallet();
   const [mode, setMode] = useState("verify_login");
   const [username, setUsername] = useState("");
-  const [secret, setSecret] = useState("");
+  // const [secret, setSecret] = useState("");
   const [hashedData, setHashedData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -53,7 +53,7 @@ export default function HeroSection() {
     if (!connected && !address) {
       setHashedData(null);
       setUsername("");
-      setSecret("");
+      // setSecret("");
       setShowSuccess(false);
     } else {
       fetchUserRecords();
@@ -71,7 +71,7 @@ export default function HeroSection() {
     setIsSubmitting(true);
 
     try {
-      const secretField = await stringToField(secret.trim());
+      // const secretField = await stringToField(secret.trim());
       const usernameField = await stringToField(username.trim().toLowerCase());
 
       const functionName = mode === "register" ? "register" : "verify_login";
@@ -80,7 +80,7 @@ export default function HeroSection() {
         tx = await executeTransaction({
           program: "shadowsphere_social3.aleo",
           function: functionName,
-          inputs: [secretField, usernameField],
+          inputs: [ usernameField],
           fee: 100000,
           privateFee: false,
         });
@@ -249,7 +249,7 @@ export default function HeroSection() {
                     />
                   </div>
 
-                  <div className="group">
+                  {/* <div className="group">
                     <label className="block text-sm mb-2 font-medium text-gray-300 transition-colors group-focus-within:text-indigo-400">
                       {mode === "register" ? "Secret Phrase" : "Secret Phrase"}
                     </label>
@@ -270,7 +270,7 @@ export default function HeroSection() {
                         Use something memorable but private
                       </p>
                     )}
-                  </div>
+                  </div> */}
 
                   <button
                     type="submit"
