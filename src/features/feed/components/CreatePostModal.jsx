@@ -2,6 +2,7 @@ import { useState } from "react";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import { X, Lock, Unlock, Shield, Hash, Send, ChevronDown } from "lucide-react";
+import CategorySelect from "./CategorySelect";
 
 const categories = [
   "Whistleblowing",
@@ -134,28 +135,14 @@ export default function CreatePostModal({ open, onClose }) {
           </div>
 
           {/* ── Category ─────────────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-widest flex items-center gap-1.5">
-              <Hash size={11} />
-              Category
-            </label>
-            <div className="relative">
-              <select
+          
+          
+              <CategorySelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
-                className="w-full appearance-none bg-[var(--color-surface-2)] border border-[var(--color-border)] hover:border-indigo-500/40 focus:border-indigo-500/60 focus:ring-2 focus:ring-indigo-500/15 focus:outline-none rounded-xl px-4 py-3 text-sm text-[var(--color-text-primary)] transition-all duration-300 cursor-pointer pr-10">
-                {categories.map((c) => (
-                  <option className="bg-[#0f0f0f]" key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                size={15}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--color-text-secondary)] pointer-events-none"
+                onChange={setCategory}
+                categories={categories}
               />
-            </div>
-          </div>
+           
 
           {/* ── Encryption Toggle ────────────────────── */}
           <button
