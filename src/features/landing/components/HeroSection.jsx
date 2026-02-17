@@ -105,8 +105,8 @@ export default function HeroSection() {
           program: "shadowsphere_social.aleo",
           function: "verify_login",
           inputs: [
-            address, // address.public
-            userRecord, // FULL record object
+            address, 
+            userRecord, 
           ],
           fee: 100000,
           privateFee: false,
