@@ -63,8 +63,8 @@ export default function HeroSection() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!address && connected) {
-      console.error("Wallet connected but public key not yet available.");
+    if (!connected || !address) {
+      console.error("Wallet not ready");
       return;
     }
 
@@ -74,46 +74,79 @@ export default function HeroSection() {
       const secretField = await stringToField(secret.trim());
       const usernameField = await stringToField(username.trim().toLowerCase());
 
-      console.log("secret field", secretField);
-      console.log("user field", usernameField);
+      const functionName = mode === "register" ? "register" : "verify_login";
+      let tx;
+      if (functionName === "register") {
+        tx = await executeTransaction({
+          program: "shadowsphere_social.aleo",
+          function: functionName,
+          inputs: [secretField, usernameField],
+          fee: 100000,
+          privateFee: false,
+        });
+      } else {
+        // 1️⃣ Fetch records
+        const records = await requestRecords("shadowsphere_social.aleo");
 
-      const txId = await executeTransaction({
-        program: "shadowsphere_social.aleo",
-        function: "register",
-        inputs: [secretField, usernameField],
-        fee: 100000,
-        privateFee: false,
-      });
+        const activeRecords = records.filter(
+          (r) => !r.spent && r.recordName === "UserSecret",
+        );
 
-      let status;
+        if (activeRecords.length === 0) {
+          throw new Error("No UserSecret record found");
+        }
+
+        const userRecord = activeRecords[0];
+
+        console.log("Using record for login:", userRecord);
+
+        // 2️⃣ Execute verify_login with correct types  
+        tx = await executeTransaction({
+          program: "shadowsphere_social.aleo",
+          function: "verify_login",
+          inputs: [
+            address, // address.public
+            userRecord, // FULL record object
+          ],
+          fee: 100000,
+          privateFee: false,
+        });
+      }
+
+      console.log(`${mode} tx submitted:`, tx.transactionId);
+
       let confirmed = false;
 
       while (!confirmed) {
         await new Promise((r) => setTimeout(r, 3000));
 
-        status = await transactionStatus(txId.transactionId);
+        const status = await transactionStatus(tx.transactionId);
 
         console.log("Current status:", status.status);
 
         if (status.status === "Accepted") {
           confirmed = true;
-          console.log("On-chain TX ID:", status.transactionId);
+        }
 
-          setTimeout(async () => {
-            const records = await requestRecords("shadowsphere_social.aleo");
-            console.log("Updated records:", records);
-            setShowSuccess(true);
-            navigate("/feed");
-          }, 12000);
+        if (status.status === "Rejected") {
+          throw new Error("Transaction rejected");
         }
       }
+
+      // Give Aleo time to finalize state
+      await new Promise((r) => setTimeout(r, 5000));
+
+      setShowSuccess(true);
+
+      // Navigate AFTER success
+      navigate("/feed");
     } catch (error) {
-      console.error("registration failed:", error);
+      console.error(`${mode} failed:`, error);
     } finally {
       setIsSubmitting(false);
-      setTimeout(() => setShowSuccess(false), 3000);
     }
   };
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center text-center px-6 relative overflow-hidden">
       {/* Animated background gradients */}
@@ -181,7 +214,7 @@ export default function HeroSection() {
                 {/* Mode Toggle */}
                 <div className="flex gap-2 p-1 bg-gray-900/50 rounded-2xl">
                   <button
-                    onClick={() => setMode("login")}
+                    onClick={() => setMode("verify_login")}
                     className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
                       mode === "verify_login"
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
