@@ -2,6 +2,7 @@ import { WalletMultiButton } from "@provablehq/aleo-wallet-adaptor-react-ui";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { useState, useEffect } from "react";
 import { stringToField } from "../../../lib/stringToField";
+import { useNavigate } from "react-router-dom";
 
 export default function HeroSection() {
   const {
@@ -11,14 +12,16 @@ export default function HeroSection() {
     executeTransaction,
     transactionStatus,
   } = useWallet();
-  const [mode, setMode] = useState("login");
+  const [mode, setMode] = useState("verify_login");
   const [username, setUsername] = useState("");
   const [secret, setSecret] = useState("");
   const [hashedData, setHashedData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [isFetchingRecords, setIsFetchingRecords] = useState(false);
-
+  // const [authStatus, setAuthStatus] = useState("idle");
+  // idle | checking | registered | unregistered
+  const navigate = useNavigate();
   const fetchUserRecords = async () => {
     // 1. Safety Guard: Ensure wallet is connected and publicKey is ready
     if (!connected || !address) {
@@ -64,15 +67,10 @@ export default function HeroSection() {
       console.error("Wallet connected but public key not yet available.");
       return;
     }
-    console.log("pubkey", address);
-
-    // if (!publicKey) return;
 
     setIsSubmitting(true);
 
     try {
-      // Production hashing: Salt + Data
-
       const secretField = await stringToField(secret.trim());
       const usernameField = await stringToField(username.trim().toLowerCase());
 
@@ -87,8 +85,6 @@ export default function HeroSection() {
         privateFee: false,
       });
 
-      // console.log("txId", txId);
-
       let status;
       let confirmed = false;
 
@@ -102,15 +98,15 @@ export default function HeroSection() {
         if (status.status === "Accepted") {
           confirmed = true;
           console.log("On-chain TX ID:", status.transactionId);
+
+          setTimeout(async () => {
+            const records = await requestRecords("shadowsphere_social.aleo");
+            console.log("Updated records:", records);
+            setShowSuccess(true);
+            navigate("/feed");
+          }, 12000);
         }
       }
-
-      setShowSuccess(true);
-
-      setTimeout(async () => {
-        const records = await requestRecords("shadowsphere_social.aleo");
-        console.log("Updated records:", records);
-      }, 12000);
     } catch (error) {
       console.error("registration failed:", error);
     } finally {
@@ -187,7 +183,7 @@ export default function HeroSection() {
                   <button
                     onClick={() => setMode("login")}
                     className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-                      mode === "login"
+                      mode === "verify_login"
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
                         : "text-gray-400 hover:text-white hover:bg-gray-800/50"
                     }`}>
