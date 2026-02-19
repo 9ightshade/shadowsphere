@@ -75,6 +75,63 @@ export default function DepositModal({ open, onClose, balance }) {
     }
   };
 
+  // const handleConfirm = async () => {
+  //   if (!connected) {
+  //     alert("Please connect your Aleo wallet first.");
+  //     return;
+  //   }
+
+  //   if (!amount || isNaN(amount) || Number(amount) <= 0) return;
+
+  //   try {
+  //     setConfirming(true);
+
+  //     const programId =
+  //       network === "Aleo Mainnet"
+  //         ? ALEO_CONFIG.PROGRAM_ID_MAINNET
+  //         : ALEO_CONFIG.PROGRAM_ID_TESTNET;
+
+  //     const parsedAmount = BigInt(
+  //       Math.floor(Number(amount) * 10 ** ALEO_CONFIG.TOKEN_DECIMALS),
+  //     );
+
+  //     const inputValue = `${parsedAmount}u128`;
+
+  //     const tx = await executeTransaction({
+  //       program: programId,
+  //       function: "deposit",
+  //       inputs: [inputValue, "", ""],
+  //       fee: ALEO_CONFIG.DEPOSIT_FEE,
+  //       privateFee: false,
+  //     });
+
+  //     console.log("Transaction submitted:", tx.transactionId);
+
+  //     // 🔁 Poll until Accepted or Rejected
+  //     const result = await pollTransactionUntilFinal(tx.transactionId);
+
+  //     if (result.finalStatus === "Accepted") {
+  //       console.log("Transaction accepted ✅");
+  //       setDone(true);
+
+  //       setTimeout(() => {
+  //         setDone(false);
+  //         setAmount("");
+  //         onClose();
+  //       }, 1500);
+  //     } else {
+  //       console.log("Transaction rejected ❌", result.finalStatus);
+  //       // alert("Transaction was rejected.");
+  //     }
+  //   } catch (error) {
+  //     console.log("Deposit failed:", error);
+  //     // alert(error.message || "Transaction failed.");
+  //   } finally {
+  //     setConfirming(false);
+  //   }
+  // };
+  const MIN_DEPOSIT = 1000000n; // 1000000u128
+
   const handleConfirm = async () => {
     if (!connected) {
       alert("Please connect your Aleo wallet first.");
@@ -86,32 +143,33 @@ export default function DepositModal({ open, onClose, balance }) {
     try {
       setConfirming(true);
 
-      const programId =
-        network === "Aleo Mainnet"
-          ? ALEO_CONFIG.PROGRAM_ID_MAINNET
-          : ALEO_CONFIG.PROGRAM_ID_TESTNET;
-
+      // Convert UI amount → smallest unit (u128)
       const parsedAmount = BigInt(
         Math.floor(Number(amount) * 10 ** ALEO_CONFIG.TOKEN_DECIMALS),
       );
 
+      // ✅ Enforce minimum deposit
+      if (parsedAmount < MIN_DEPOSIT) {
+        alert("Minimum deposit is 1 USDCx.");
+        setConfirming(false);
+        return;
+      }
+
       const inputValue = `${parsedAmount}u128`;
 
       const tx = await executeTransaction({
-        program: programId, // ⚠️ remove array unless SDK strictly requires it
+        program: "shadowsphere_social9.aleo",
         function: "deposit",
         inputs: [inputValue],
-        fee: ALEO_CONFIG.DEPOSIT_FEE,
+        fee: 100000,
         privateFee: false,
       });
 
       console.log("Transaction submitted:", tx.transactionId);
 
-      // 🔁 Poll until Accepted or Rejected
       const result = await pollTransactionUntilFinal(tx.transactionId);
 
       if (result.finalStatus === "Accepted") {
-        console.log("Transaction accepted ✅");
         setDone(true);
 
         setTimeout(() => {
@@ -120,7 +178,6 @@ export default function DepositModal({ open, onClose, balance }) {
           onClose();
         }, 1500);
       } else {
-        console.error("Transaction rejected ❌");
         alert("Transaction was rejected.");
       }
     } catch (error) {
@@ -131,7 +188,7 @@ export default function DepositModal({ open, onClose, balance }) {
     }
   };
 
-  const quickAmounts = [500, 1000, 2500, 5000];
+  const quickAmounts = [1, 2, 2.5, 3];
 
   return (
     <div

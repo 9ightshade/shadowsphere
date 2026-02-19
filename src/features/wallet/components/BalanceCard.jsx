@@ -1,13 +1,35 @@
+/* eslint-disable no-unused-vars */
 // ─── BalanceCard.jsx ──────────────────────────────────────────────────────────
 import { ArrowDownLeft, ArrowUpRight, Eye, EyeOff, Wallet } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DepositModal from "./DepositModal";
 import WithdrawModal from "./WithdrawModal";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 export default function BalanceCard({ balance }) {
-  const [hidden, setHidden]           = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [showDeposit, setShowDeposit] = useState(false);
   const [showWithdraw, setShowWithdraw] = useState(false);
+  const [history, setHistory] = useState([]);
+  const { requestTransactionHistory, address, connected } = useWallet();
+
+  // ─── ASYNC FETCH FUNCTION ─────────────────────────────────────
+  useEffect(() => {
+    const fetchHistory = async () => {
+      if (connected && address) {
+        try {
+          console.log("Fetching transaction history...");
+          const data = await requestTransactionHistory(address);
+          console.log("Transaction history details:", data);
+          setHistory(data);
+        } catch (error) {
+          console.error("Failed to fetch history:", error);
+        }
+      }
+    };
+
+    fetchHistory();
+  }, [address, connected, requestTransactionHistory]);
 
   return (
     <>
@@ -31,8 +53,7 @@ export default function BalanceCard({ balance }) {
               <button
                 onClick={() => setHidden(!hidden)}
                 className="ml-1 p-1 rounded-lg text-[var(--color-text-secondary)] hover:text-indigo-400 hover:bg-indigo-500/10 active:scale-90 transition-all duration-200"
-                aria-label="Toggle balance visibility"
-              >
+                aria-label="Toggle balance visibility">
                 {hidden ? <EyeOff size={13} /> : <Eye size={13} />}
               </button>
             </div>
@@ -40,19 +61,25 @@ export default function BalanceCard({ balance }) {
             <div className="flex items-end gap-3">
               <h2 className="text-4xl font-bold tracking-tight text-[var(--color-text-primary)]">
                 {hidden ? (
-                  <span className="text-3xl tracking-[0.25em] text-[var(--color-text-secondary)]">••••••</span>
+                  <span className="text-3xl tracking-[0.25em] text-[var(--color-text-secondary)]">
+                    ••••••
+                  </span>
                 ) : (
                   balance.toLocaleString("en-US", { minimumFractionDigits: 2 })
                 )}
               </h2>
               {!hidden && (
-                <span className="mb-1 text-sm font-semibold text-indigo-400">USDCx</span>
+                <span className="mb-1 text-sm font-semibold text-indigo-400">
+                  USDCx
+                </span>
               )}
             </div>
 
             <div className="flex items-center gap-1.5 mt-1">
               <span className="text-xs text-green-400 font-medium">+2.4%</span>
-              <span className="text-xs text-[var(--color-text-secondary)]">past 24h</span>
+              <span className="text-xs text-[var(--color-text-secondary)]">
+                past 24h
+              </span>
             </div>
           </div>
 
@@ -64,9 +91,11 @@ export default function BalanceCard({ balance }) {
                 bg-[var(--color-surface-2)] border border-[var(--color-border)]
                 text-[var(--color-text-primary)]
                 hover:border-green-500/30 hover:bg-green-500/10 hover:text-green-300
-                active:scale-95 transition-all duration-300"
-            >
-              <ArrowDownLeft size={16} className="text-green-400 group-hover:scale-110 transition-transform duration-300" />
+                active:scale-95 transition-all duration-300">
+              <ArrowDownLeft
+                size={16}
+                className="text-green-400 group-hover:scale-110 transition-transform duration-300"
+              />
               Deposit
             </button>
 
@@ -76,10 +105,12 @@ export default function BalanceCard({ balance }) {
                 bg-gradient-to-r from-indigo-600 to-purple-600
                 hover:from-indigo-500 hover:to-purple-500
                 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50
-                active:scale-95 hover:scale-[1.02] transition-all duration-300 overflow-hidden relative"
-            >
+                active:scale-95 hover:scale-[1.02] transition-all duration-300 overflow-hidden relative">
               <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
-              <ArrowUpRight size={16} className="relative z-10 group-hover:scale-110 transition-transform duration-300" />
+              <ArrowUpRight
+                size={16}
+                className="relative z-10 group-hover:scale-110 transition-transform duration-300"
+              />
               <span className="relative z-10">Withdraw</span>
             </button>
           </div>

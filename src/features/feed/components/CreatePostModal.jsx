@@ -3,6 +3,7 @@ import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import { X, Lock, Unlock, Shield, Hash, Send, ChevronDown } from "lucide-react";
 import CategorySelect from "./CategorySelect";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 const categories = [
   "Whistleblowing",
@@ -18,11 +19,14 @@ const categories = [
 const MAX_CHARS = 500;
 
 export default function CreatePostModal({ open, onClose }) {
+  const { connected, address, executeTransaction, transactionStatus } =
+    useWallet();
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(categories[0]);
   const [encrypted, setEncrypted] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [done, setDone] = useState(false);
+  const [error, setError] = useState(null);
 
   if (!open) return null;
 
@@ -32,21 +36,76 @@ export default function CreatePostModal({ open, onClose }) {
   const nearLimit = charLeft <= 60 && !overLimit;
   const fillPct = Math.min((charCount / MAX_CHARS) * 100, 100);
 
-  const handlePublish = async () => {
-    if (!content.trim() || overLimit) return;
-    setPublishing(true);
-    await new Promise((r) => setTimeout(r, 1000));
-    setPublishing(false);
-    setDone(true);
-    setTimeout(() => {
-      setDone(false);
-      setContent("");
-      setCategory(categories[0]);
-      setEncrypted(false);
-      onClose();
-    }, 1200);
-  };
+  // const handlePublish = async () => {
+  //   if (!connected)
+  //     return setError("wallet not connected please connect wallet First");
+  //   if (!content.trim() || overLimit) return;
 
+  //   setPublishing(true);
+  //   setError(null);
+  //   await new Promise((r) => setTimeout(r, 1000));
+  //   setPublishing(false);
+  //   setDone(true);
+  //   setTimeout(() => {
+  //     setDone(false);
+  //     setContent("");
+  //     setCategory(categories[0]);
+  //     setEncrypted(false);
+  //     onClose();
+  //   }, 1200);
+  // };
+
+  const handlePublish = async () => {
+    if (!connected) return setError("Wallet not connected");
+    if (!content.trim() || overLimit) return;
+
+    setPublishing(true);
+    setError(null);
+
+    try {
+      // Hash content for privacy
+      const encoder = new TextEncoder();
+      const contentHashBuffer = await crypto.subtle.digest(
+        "SHA-256",
+        encoder.encode(content),
+      );
+      const contentHash = Array.from(new Uint8Array(contentHashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+
+      // Map category to r2 (0-7)
+      const r2 = categories.indexOf(category);
+
+      // Execute Aleo transaction
+      const result = await executeTransaction({
+        program: "shadowsphere_social9.aleo",
+        function: "create_post",
+        inputs: [contentHash, encrypted, r2],
+        fee: 100000,
+      });
+
+      // Poll for status
+      const status = await transactionStatus(result.transactionId);
+
+      if (status.status === "Accepted") {
+        setDone(true);
+        setTimeout(() => {
+          setDone(false);
+          setContent("");
+          setCategory(categories[0]);
+          setEncrypted(false);
+          onClose();
+        }, 1200);
+      } else {
+        setError(`Transaction failed: ${status.status}`);
+      }
+    } catch (err) {
+      console.error(err);
+      setError(err?.message || "Unknown error occurred");
+    } finally {
+      setPublishing(false);
+    }
+  };
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
@@ -135,14 +194,12 @@ export default function CreatePostModal({ open, onClose }) {
           </div>
 
           {/* ── Category ─────────────────────────────── */}
-          
-          
-              <CategorySelect
-                value={category}
-                onChange={setCategory}
-                categories={categories}
-              />
-           
+
+          <CategorySelect
+            value={category}
+            onChange={setCategory}
+            categories={categories}
+          />
 
           {/* ── Encryption Toggle ────────────────────── */}
           <button

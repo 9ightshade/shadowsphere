@@ -8,39 +8,130 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 const NETWORKS = ["Aleo Mainnet", "Aleo Testnet"];
 
 export default function WithdrawModal({ open, onClose, balance }) {
   const [network, setNetwork] = useState(NETWORKS[0]);
+  const { executeTransaction, connected, transactionStatus } = useWallet();
+
   const [amount, setAmount] = useState("");
-  const [address, setAddress] = useState("");
+  // const [address, setAddress] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [done, setDone] = useState(false);
+  const MIN_WITHDRAW = 1000000n; // 1000000u128
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+  const pollTransactionUntilFinal = async (txId, options = {}) => {
+    const { interval = 4000, timeout = 180000 } = options;
+    const start = Date.now();
+
+    console.log("🔎 Starting withdrawal polling:", txId);
+
+    while (true) {
+      if (Date.now() - start > timeout) {
+        console.error("⏰ Withdrawal polling timed out.");
+        throw new Error("Transaction polling timed out.");
+      }
+
+      try {
+        const status = await transactionStatus(txId);
+
+        console.log("📡 Current withdrawal status:", status);
+
+        if (status.status === "Accepted") {
+          console.log("✅ Withdrawal Accepted:", status);
+          return { finalStatus: "Accepted", data: status };
+        }
+
+        if (status.status === "Rejected") {
+          console.log("❌ Withdrawal Rejected:", status);
+          return { finalStatus: "Rejected", data: status };
+        }
+      } catch (err) {
+        const message = err?.message || "";
+
+        if (!message.includes("Transaction not found")) {
+          console.warn("⚠️ Polling error:", err);
+        } else {
+          console.log("⏳ Transaction not found yet, retrying...");
+        }
+      }
+
+      await sleep(interval);
+    }
+  };
 
   if (!open) return null;
 
   const parsedAmount = parseFloat(amount) || 0;
+
+  // Convert to smallest unit (u128)
+  const parsedAmountU128 =
+    amount && !isNaN(amount)
+      ? BigInt(Math.floor(Number(amount) * 10 ** 6)) // or ALEO_CONFIG.TOKEN_DECIMALS
+      : 0n;
+
   const insufficient = parsedAmount > balance;
-  const noAddress = !address.trim();
-  const canSubmit = parsedAmount > 0 && !insufficient && !noAddress;
+  const tooSmall = parsedAmount > 0 && parsedAmountU128 < MIN_WITHDRAW;
+
+  // const noAddress = !address.trim();
+  const canSubmit = parsedAmount > 0 && !insufficient && !tooSmall;
+
   const fee = parsedAmount > 0 ? (parsedAmount * 0.001).toFixed(4) : "0.0000";
   const youReceive =
     parsedAmount > 0 ? (parsedAmount - parseFloat(fee)).toFixed(2) : "0.00";
   const quickPcts = [25, 50, 75, 100];
 
   const handleConfirm = async () => {
+    if (!connected) {
+      alert("Please connect your Aleo wallet first.");
+      return;
+    }
+
     if (!canSubmit || confirming) return;
-    setConfirming(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setConfirming(false);
-    setDone(true);
-    setTimeout(() => {
-      setDone(false);
-      setAmount("");
-      setAddress("");
-      onClose();
-    }, 1500);
+
+    try {
+      setConfirming(true);
+
+      const inputAmount = `${parsedAmountU128}u128`;
+
+      const tx = await executeTransaction({
+        program: "shadowsphere_social9.aleo",
+        function: "withdraw",
+        inputs: [inputAmount],
+        fee: 100000,
+        privateFee: false,
+      });
+
+      console.log("🚀 Withdrawal submitted:", {
+        txId: tx.transactionId,
+        amount: inputAmount,
+        program: "shadowsphere_social9.aleo",
+        function: "withdraw",
+      });
+
+      const result = await pollTransactionUntilFinal(tx.transactionId);
+
+      if (result.finalStatus === "Accepted") {
+        setDone(true);
+
+        setTimeout(() => {
+          setDone(false);
+          setAmount("");
+          // setAddress("");
+          onClose();
+        }, 1500);
+      } else {
+        alert("Transaction was rejected.");
+      }
+    } catch (error) {
+      console.error("Withdrawal failed:", error);
+      alert(error.message || "Transaction failed.");
+    } finally {
+      setConfirming(false);
+    }
   };
 
   return (
@@ -129,9 +220,9 @@ export default function WithdrawModal({ open, onClose, balance }) {
                     ? "border-indigo-500/40 ring-2 ring-indigo-500/10"
                     : "border-[var(--color-border)] focus-within:border-indigo-500/40 focus-within:ring-2 focus-within:ring-indigo-500/10"
               }`}>
-              <span className="text-sm font-bold text-[var(--color-text-secondary)]">
+              {/* <span className="text-sm font-bold text-[var(--color-text-secondary)]">
                 ₦
-              </span>
+              </span> */}
               <input
                 type="number"
                 min="0"
@@ -170,10 +261,16 @@ export default function WithdrawModal({ open, onClose, balance }) {
                 Exceeds available balance
               </p>
             )}
+            {tooSmall && (
+              <p className="flex items-center gap-1.5 text-xs text-rose-400 pl-1 animate-fadeIn">
+                <AlertTriangle size={11} />
+                Minimum withdrawal is 1 USDCx
+              </p>
+            )}
           </div>
 
           {/* Destination address */}
-          <div className="flex flex-col gap-1.5">
+          {/* <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-widest flex items-center gap-1.5">
               <Shield size={10} className="text-indigo-400" />
               Destination Address
@@ -193,7 +290,7 @@ export default function WithdrawModal({ open, onClose, balance }) {
                 className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]/40 focus:outline-none"
               />
             </div>
-          </div>
+          </div> */}
 
           {/* Fee summary */}
           {parsedAmount > 0 && (
