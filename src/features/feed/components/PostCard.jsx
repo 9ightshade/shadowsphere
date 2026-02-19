@@ -10,6 +10,8 @@ import PostActions from "./PostActions";
 // }
 
 export default function PostCard({ post }) {
+  console.log("post card post", post);
+
   return (
     <Card className="flex flex-col gap-4">
       {/* Header */}
@@ -38,6 +40,7 @@ export default function PostCard({ post }) {
 
       {/* Actions */}
       <PostActions
+        postId={post.id}
         likes={post.likes}
         comments={post.comments}
         recipientAlias={post.alias}

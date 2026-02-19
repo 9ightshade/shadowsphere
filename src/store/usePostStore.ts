@@ -18,6 +18,7 @@ interface PostState {
   posts: Post[];
   addPost: (post: Post) => void;
   setPosts: (posts: Post[]) => void;
+  incrementLikes: (postId: string) => void;
   clearPosts: () => void;
 }
 
@@ -25,6 +26,12 @@ export const usePostStore = create<PostState>()(
   persist(
     (set, get) => ({
       posts: [],
+      incrementLikes: (postId: string) =>
+        set((state) => ({
+          posts: state.posts.map((post) =>
+            post.id === postId ? { ...post, likes: post.likes + 1 } : post,
+          ),
+        })),
 
       addPost: (post) =>
         set((state) => {
@@ -40,7 +47,7 @@ export const usePostStore = create<PostState>()(
       clearPosts: () => set({ posts: [] }),
     }),
     {
-      name: "shadowsphere-post-storage", 
+      name: "shadowsphere-post-storage",
     },
   ),
 );
