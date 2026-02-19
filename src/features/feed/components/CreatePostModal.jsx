@@ -1,29 +1,46 @@
+/* eslint-disable no-unused-vars */
 import { useState } from "react";
 import Button from "../../../components/ui/Button";
 import Card from "../../../components/ui/Card";
 import { X, Lock, Unlock, Shield, Hash, Send, ChevronDown } from "lucide-react";
 import CategorySelect from "./CategorySelect";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+import {
+  parseAleoStruct,
+  fieldToString,
+  stringToField,
+} from "../../../lib/aleo/index";
 
-const categories = [
-  "Whistleblowing",
-  "Private Communities",
-  "Finance",
-  "General",
-  "Technology",
-  "Governance",
-  "Security",
-  "Other",
-];
+// const categories = [
+//   "Whistleblowing",
+//   "Private Communities",
+//   "Finance",
+//   "General",
+//   "Technology",
+//   "Governance",
+//   "Security",
+//   "Other",
+// ];
 
-const MAX_CHARS = 500;
+const CATEGORY_MAP = {
+  Finances: 1,
+  Sport: 2,
+  Tech: 3,
+  Games: 4,
+  World: 5,
+  Science: 6,
+  Art: 7,
+  Entertainment: 8,
+};
+const categories = Object.keys(CATEGORY_MAP);
+const MAX_CHARS = 30;
 
 export default function CreatePostModal({ open, onClose }) {
   const { connected, address, executeTransaction, transactionStatus } =
     useWallet();
   const [content, setContent] = useState("");
   const [category, setCategory] = useState(categories[0]);
-  const [encrypted, setEncrypted] = useState(false);
+  const [encrypted] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [done, setDone] = useState(false);
   const [error, setError] = useState(null);
@@ -36,69 +53,60 @@ export default function CreatePostModal({ open, onClose }) {
   const nearLimit = charLeft <= 60 && !overLimit;
   const fillPct = Math.min((charCount / MAX_CHARS) * 100, 100);
 
-  // const handlePublish = async () => {
-  //   if (!connected)
-  //     return setError("wallet not connected please connect wallet First");
-  //   if (!content.trim() || overLimit) return;
-
-  //   setPublishing(true);
-  //   setError(null);
-  //   await new Promise((r) => setTimeout(r, 1000));
-  //   setPublishing(false);
-  //   setDone(true);
-  //   setTimeout(() => {
-  //     setDone(false);
-  //     setContent("");
-  //     setCategory(categories[0]);
-  //     setEncrypted(false);
-  //     onClose();
-  //   }, 1200);
-  // };
-
   const handlePublish = async () => {
     if (!connected) return setError("Wallet not connected");
-    if (!content.trim() || overLimit) return;
+    if (!content.trim()) return;
 
     setPublishing(true);
     setError(null);
 
     try {
-      // Hash content for privacy
-      const encoder = new TextEncoder();
-      const contentHashBuffer = await crypto.subtle.digest(
-        "SHA-256",
-        encoder.encode(content),
-      );
-      const contentHash = Array.from(new Uint8Array(contentHashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+      const categoryValue = CATEGORY_MAP[category];
+      const contentField = stringToField(content.trim());
+      console.log("Inputs being sent:", [
+        contentField,
+        "true",
+        `${categoryValue}u8`,
+      ]);
 
-      // Map category to r2 (0-7)
-      const r2 = categories.indexOf(category);
-
-      // Execute Aleo transaction
       const result = await executeTransaction({
         program: "shadowsphere_social9.aleo",
         function: "create_post",
-        inputs: [contentHash, encrypted, r2],
+        inputs: [contentField, "true", `${categoryValue}u8`],
         fee: 100000,
+        privateFee: false,
       });
 
-      // Poll for status
-      const status = await transactionStatus(result.transactionId);
+      console.log("🚀 Post submitted:", result.transactionId);
 
-      if (status.status === "Accepted") {
-        setDone(true);
-        setTimeout(() => {
-          setDone(false);
-          setContent("");
-          setCategory(categories[0]);
-          setEncrypted(false);
-          onClose();
-        }, 1200);
-      } else {
-        setError(`Transaction failed: ${status.status}`);
+      // Polling loop (recommended)
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+      while (true) {
+        const status = await transactionStatus(result.transactionId);
+
+        console.log("📡 Current Status:", status.status);
+
+        if (status.status === "Accepted") {
+          console.log("✅ Post accepted:", status);
+          break;
+        }
+
+        if (status.status === "Rejected") {
+          throw new Error("Transaction rejected");
+        }
+
+        await sleep(4000);
       }
+
+      setDone(true);
+
+      setTimeout(() => {
+        setDone(false);
+        setContent("");
+        setCategory(categories[0]);
+        onClose();
+      }, 1200);
     } catch (err) {
       console.error(err);
       setError(err?.message || "Unknown error occurred");
@@ -106,6 +114,7 @@ export default function CreatePostModal({ open, onClose }) {
       setPublishing(false);
     }
   };
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center px-4 modal-backdrop"
@@ -151,7 +160,8 @@ export default function CreatePostModal({ open, onClose }) {
           <div className="relative">
             <textarea
               value={content}
-              onChange={(e) => setContent(e.target.value)}
+              maxLength={30}
+              onChange={(e) => setContent(e.target.value.slice(0, 30))}
               rows={5}
               placeholder="Share something anonymously..."
               className={`
@@ -204,7 +214,7 @@ export default function CreatePostModal({ open, onClose }) {
           {/* ── Encryption Toggle ────────────────────── */}
           <button
             type="button"
-            onClick={() => setEncrypted(!encrypted)}
+            // onClick={() => setEncrypted(!encrypted)}
             className={`
               group flex items-center gap-3 w-full px-4 py-3.5 rounded-2xl border
               transition-all duration-300 active:scale-[0.98] text-left
