@@ -13,6 +13,7 @@ import { useEffect, useState } from "react";
 import { useInView } from "react-intersection-observer";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { usePostStore } from "../../store/usePostStore";
+import { fieldToString } from "../../lib/aleo/index";
 
 const CATEGORIES = ["All", "Whistleblowing", "Finance", "Private Communities"];
 const SORT_OPTIONS = [
@@ -32,7 +33,7 @@ export default function FeedPage() {
 
   // ✅ Zustand store
   const posts = usePostStore((state) => state.posts);
-  const addPost = usePostStore((state) => state.addPost);
+  const addOrUpdatePost = usePostStore((state) => state.addOrUpdatePost);
 
   const PROGRAM_ID = "shadowsphere_social9.aleo";
 
@@ -62,24 +63,26 @@ export default function FeedPage() {
         if (!res.ok) throw new Error("Not found");
 
         const data = await res.json();
+
+        console.log("formatted post", data);
+
         const formattedPost = {
           id: String(data.post_id ?? postId),
-          alias:
-            "aleo..." +
-            String(data.author ?? "anon")
-              .toString()
-              .slice(-6),
+          alias: String(data.author).toString().slice(-6),
           reputation: Math.floor(Math.random() * 200),
           verified: true,
           category: mapCategory(data.category),
-          content: `Encrypted: ${data.encrypted}, Hash: ${data.content_hash}`,
+          content: data.content_hash
+            ? fieldToString(data.content_hash)
+            : `No content `,
+
           encrypted: Boolean(data.encrypted),
           likes: Number(data.likes ?? 0),
           comments: Number(data.comments ?? 0),
           timestamp: `${Number(data.timestamp ?? 0)} blocks ago`,
         };
 
-        addPost(formattedPost);
+        addOrUpdatePost(formattedPost);
 
         console.log("Stored post:", formattedPost);
 

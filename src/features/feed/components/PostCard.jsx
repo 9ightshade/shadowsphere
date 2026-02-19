@@ -6,7 +6,7 @@ import EncryptedContentWrapper from "./EncryptedContentWrapper";
 import PostActions from "./PostActions";
 
 export default function PostCard({ post }) {
-  // console.log("post card post", post);
+  console.log("post card post", post);
 
   return (
     <div className="relative z-0">

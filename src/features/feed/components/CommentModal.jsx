@@ -4,6 +4,7 @@ import { X, MessageCircle, Send, Shield, Lock } from "lucide-react";
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { stringToField } from "../../../lib/aleo/stringToField";
+import { usePostStore } from "../../../store/usePostStore";
 const MAX_COMMENT_LENGTH = 30;
 
 export default function CommentModal({
@@ -17,6 +18,9 @@ export default function CommentModal({
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const { executeTransaction, transactionStatus } = useWallet();
+  const incrementComments = usePostStore((state) => {
+    state.incrementComments;
+  });
   // Prevent background scroll when modal is open
   useEffect(() => {
     if (open) {
@@ -74,6 +78,7 @@ export default function CommentModal({
         if (status.status === "Accepted") {
           console.log("Comment confirmed on-chain ✅");
           setDone(true);
+          incrementComments(postId);
           setTimeout(() => {
             setComment("");
             setEncrypted(false);

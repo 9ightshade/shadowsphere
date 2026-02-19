@@ -1,16 +1,9 @@
 import { useState } from "react";
 import Button from "../../../components/ui/Button";
 
-// interface Props {
-//   content: string;
-//   encrypted?: boolean;
-// }
-
-export default function EncryptedContentWrapper({
-  content,
-  encrypted,
-}) {
+export default function EncryptedContentWrapper({ content, encrypted }) {
   const [revealed, setRevealed] = useState(false);
+  console.log("encrypted content", content);
 
   if (!encrypted) {
     return <p className="text-sm leading-relaxed">{content}</p>;

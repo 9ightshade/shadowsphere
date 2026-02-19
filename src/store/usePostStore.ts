@@ -16,9 +16,20 @@ export interface Post {
 
 interface PostState {
   posts: Post[];
-  addPost: (post: Post) => void;
-  setPosts: (posts: Post[]) => void;
+
+  // Adds a new post or updates existing one
+  addOrUpdatePost: (post: Post) => void;
+
+  // Increment likes for a specific post
   incrementLikes: (postId: string) => void;
+
+  // Increment comments count for a specific post
+  incrementComments: (postId: string) => void;
+
+  // Replace all posts (useful for batch fetches)
+  setPosts: (posts: Post[]) => void;
+
+  // Clear all posts from store
   clearPosts: () => void;
 }
 
@@ -26,21 +37,40 @@ export const usePostStore = create<PostState>()(
   persist(
     (set, get) => ({
       posts: [],
-      incrementLikes: (postId: string) =>
+
+      addOrUpdatePost: (post) => {
+        set((state) => {
+          const index = state.posts.findIndex((p) => p.id === post.id);
+
+          if (index > -1) {
+            // Merge updates with existing post
+            const updatedPosts = [...state.posts];
+            updatedPosts[index] = { ...updatedPosts[index], ...post };
+            return { posts: updatedPosts };
+          }
+
+          // Add new post if it doesn't exist
+          return { posts: [...state.posts, post] };
+        });
+      },
+
+      incrementLikes: (postId) => {
         set((state) => ({
           posts: state.posts.map((post) =>
             post.id === postId ? { ...post, likes: post.likes + 1 } : post,
           ),
-        })),
+        }));
+      },
 
-      addPost: (post) =>
-        set((state) => {
-          // Avoid duplicates by id
-          const exists = state.posts.some((p) => p.id === post.id);
-          if (exists) return state;
-
-          return { posts: [...state.posts, post] };
-        }),
+      incrementComments: (postId) => {
+        set((state) => ({
+          posts: state.posts.map((post) =>
+            post.id === postId
+              ? { ...post, comments: post.comments + 1 }
+              : post,
+          ),
+        }));
+      },
 
       setPosts: (posts) => set({ posts }),
 
@@ -48,6 +78,7 @@ export const usePostStore = create<PostState>()(
     }),
     {
       name: "shadowsphere-post-storage",
+      // getStorage: () => localStorage, // persist to localStorage
     },
   ),
 );

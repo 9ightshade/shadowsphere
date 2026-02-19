@@ -3,7 +3,11 @@
  */
 export function fieldToString(fieldStr: string | number | bigint | boolean) {
   try {
-    let num = BigInt(fieldStr);
+    if (!fieldStr) {
+      return "";
+    }
+    const cleaned = fieldStr.toString().replace("field", "");
+    let num = BigInt(cleaned);
 
     if (num === 0n) return "";
 
