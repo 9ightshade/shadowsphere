@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // ─── NewMessageModal.jsx ──────────────────────────────────────────────────────
 import {
   X,
@@ -9,6 +10,13 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useState } from "react";
+import {
+  ALEO_PROGRAM_NAME,
+  ALEO_FEE,
+  getTimestampU32,
+} from "../../../config/config";
+import { stringToField } from "../../../lib/aleo/index";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 const MAX_MESSAGE_LENGTH = 30;
 
@@ -18,7 +26,7 @@ export default function NewMessageModal({ open, onClose }) {
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
-
+  const { executeTransaction, transactionStatus } = useWallet();
   if (!open) return null;
 
   // Validate Aleo address
@@ -35,21 +43,105 @@ export default function NewMessageModal({ open, onClose }) {
   const handleSubmit = async () => {
     if (!canSubmit || submitting) return;
 
-    setSubmitting(true);
-    await new Promise((r) => setTimeout(r, 1000));
+    try {
+      setSubmitting(true);
+      console.log("🛠 Preparing On-Chain Message...");
 
-    console.log("New message sent:", { address, message });
+      // 1. Prepare Inputs
+      const messageField = stringToField(message); // Convert "Hello" -> "12345...field"
+      const timestampU32 = getTimestampU32(); // Get "1708415181u32"
 
-    setSubmitting(false);
-    setDone(true);
-    setTimeout(() => {
-      setDone(false);
-      setAddress("");
-      setMessage("");
-      onClose();
-    }, 1500);
+      const txPayload = {
+        program: ALEO_PROGRAM_NAME,
+        function: "send_message", // Assuming your function name
+        inputs: [
+          address, // r0: Recipient Address
+          messageField, // r1: Message as a field
+          timestampU32, // r2: u32 timestamp
+        ],
+        fee: ALEO_FEE,
+        privateFee: false,
+      };
+
+      // 2. Log Payload for transparency
+      console.log("📦 MESSAGE PAYLOAD:");
+      console.table({
+        Recipient: address,
+        MessageField: messageField,
+        Timestamp: timestampU32,
+        Program: ALEO_PROGRAM_NAME,
+      });
+
+      // 3. Execute Transaction
+      const result = await executeTransaction(txPayload);
+
+      // Extract ID safely
+      const txId = result.transactionId;
+      if (!txId) throw new Error("Transaction ID missing");
+
+      console.log("🚀 Message Broadcasted! ID:", txId);
+
+      // 4. Polling for Progress
+      const start = Date.now();
+      const timeout = 120_000; // 2 minutes
+      const intervalMs = 3000;
+      let attempts = 0;
+
+      const poll = async () => {
+        attempts++;
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+
+        try {
+          console.log(
+            `🔍 [Polling] Attempt ${attempts} | ${elapsed}s elapsed...`,
+          );
+
+          const statusResponse = await transactionStatus(txId);
+          const status = statusResponse?.status || statusResponse;
+
+          console.log(
+            `📡 Status: %c${status}`,
+            "color: #38bdf8; font-weight: bold;",
+          );
+
+          if (status === "Accepted" || status === "Completed") {
+            console.log("✅ MESSAGE DELIVERED");
+            setDone(true);
+
+            setTimeout(() => {
+              setDone(false);
+              setAddress("");
+              setMessage("");
+              onClose();
+            }, 1500);
+            return;
+          }
+
+          if (status === "Rejected" || status === "Failed") {
+            console.error("❌ Message failed to send to blockchain.");
+            return;
+          }
+
+          if (Date.now() - start < timeout) {
+            setTimeout(poll, intervalMs);
+          } else {
+            console.warn("⚠️ Polling timeout.");
+          }
+        } catch (err) {
+          console.log("⏳ Waiting for network indexing...");
+          if (Date.now() - start < timeout) {
+            setTimeout(poll, intervalMs);
+          }
+        }
+      };
+
+      poll();
+    } catch (err) {
+      console.error("❌ Send Message Failed:", err);
+    } finally {
+      setSubmitting(false);
+    }
   };
-
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
