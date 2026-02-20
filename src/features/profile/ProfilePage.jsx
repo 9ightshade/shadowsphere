@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // ─── ProfilePage.jsx ──────────────────────────────────────────────────────────
 import { useAuthStore } from "../../store/useAuthStore";
 import ProfileHeader from "./components/ProfileHeader";
@@ -21,17 +22,17 @@ export default function ProfilePage() {
 
       {/* ── Header card ─────────────────────────── */}
       <div className="profile-section" style={{ animationDelay: "0.05s" }}>
-        <ProfileHeader user={user} />
+        {/* <ProfileHeader user={user} /> */}
       </div>
 
       {/* ── Stats ───────────────────────────────── */}
       <div className="profile-section" style={{ animationDelay: "0.10s" }}>
-        <ProfileStats />
+        {/* <ProfileStats /> */}
       </div>
 
       {/* ── Tabs + content ──────────────────────── */}
       <div className="profile-section" style={{ animationDelay: "0.15s" }}>
-        <ProfileTabs active={activeTab} setActive={setActiveTab} />
+        {/* <ProfileTabs active={activeTab} setActive={setActiveTab} /> */}
       </div>
 
       {/* ── Tab panels ──────────────────────────── */}

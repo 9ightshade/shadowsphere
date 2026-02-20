@@ -11,7 +11,7 @@ import { NavLink } from "react-router-dom";
 
 const navItems = [
   { label: "Feed", icon: Home, path: "/feed" },
-  { label: "Messages", icon: MessageSquare, path: "/messages", badge: 3 },
+  { label: "Messages", icon: MessageSquare, path: "/messages" },
   { label: "Wallet", icon: Wallet, path: "/wallet" },
   { label: "Gifts", icon: Gift, path: "/gifts" },
   { label: "Friends", icon: Users, path: "/friends" },

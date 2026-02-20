@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 // ─── ProfileStats.jsx ─────────────────────────────────────────────────────────
-import { useFriendsStore } from "../../../store/useFriendsStore";
-import { useWalletStore } from "../../../store/useWalletStore";
+// import { useFriendsStore } from "../../../store/useFriendsStore";
+// import { useWalletStore } from "../../../store/useWalletStore";
 import { Users, Gift, FileText } from "lucide-react";
 
 const STAT_META = [
@@ -32,13 +32,13 @@ const STAT_META = [
 ];
 
 export default function ProfileStats() {
-  const { friends } = useFriendsStore();
-  const { transactions } = useWalletStore();
-  const giftsSent = transactions.filter(
-    (t) => t.type === "gift_sent" || t.type === "gift",
-  ).length;
+  // const { friends } = useFriendsStore();
+  // const { transactions } = useWalletStore();
+  // const giftsSent = transactions.filter(
+  //   (t) => t.type === "gift_sent" || t.type === "gift",
+  // ).length;
 
-  const values = { friends: friends.length, giftsSent, posts: 12 };
+  // const values = { friends: friends.length, giftsSent, posts: 12 };
 
   return (
     <div className="grid grid-cols-3 gap-3">
@@ -54,7 +54,7 @@ export default function ProfileStats() {
             <Icon size={16} />
           </div>
           <p className="text-xl font-bold text-[var(--color-text-primary)] tabular-nums">
-            {values[key]}
+            {/* {values[key]} */}
           </p>
           <p className="text-[10px] text-[var(--color-text-secondary)] font-medium uppercase tracking-widest mt-0.5">
             {label}

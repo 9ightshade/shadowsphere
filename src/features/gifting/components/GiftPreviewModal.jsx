@@ -1,14 +1,14 @@
 /* eslint-disable no-unused-vars */
 // ─── GiftPreviewModal.jsx ─────────────────────────────────────────────────────
 import { useState } from "react";
-import { useWalletStore } from "../../../store/useWalletStore";
+import {  } from "../../../store/useWalletStore";
 import { v4 as uuid } from "uuid";
 import { X, Send, AlertTriangle, Lock, Sparkles } from "lucide-react";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import {ALEO_PROGRAM_NAME} from "../../../config/config"
 
 export default function GiftPreviewModal({ gift, recipient, onClose }) {
-  const { balance, addTransaction } = useWalletStore();
+  // const { balance, addTransaction } = useWalletStore();
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
   const { executeTransaction, transactionStatus } = useWallet();
@@ -16,7 +16,7 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
 
   if (!gift) return null;
 
-  const insufficient = balance < gift.price;
+  // const insufficient = balance < gift.price;
   const noRecipient = !recipientAddress.trim();
   const canSend = !noRecipient;
   const handleConfirm = async () => {
@@ -71,13 +71,13 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
       const actualId = result.transactionId;
       console.log("🚀 Transaction broadcasted! ID:", actualId);
 
-      addTransaction({
-        id: actualId,
-        type: "gift_sent",
-        amount: gift.price,
-        status: "pending",
-        createdAt: new Date().toISOString(),
-      });
+      // addTransaction({
+      //   id: actualId,
+      //   type: "gift_sent",
+      //   amount: gift.price,
+      //   status: "pending",
+      //   createdAt: new Date().toISOString(),
+      // });
 
       // ───── Polling Logic with Progress Logs ─────
       const start = Date.now();
@@ -102,13 +102,13 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
 
           if (status.status === "Accepted") {
             console.log("✅ Transaction SUCCESSFUL");
-            addTransaction({
-              id: actualId,
-              type: "gift_sent",
-              amount: gift.price,
-              status: "completed",
-              createdAt: new Date().toISOString(),
-            });
+            // addTransaction({
+            //   id: actualId,
+            //   type: "gift_sent",
+            //   amount: gift.price,
+            //   status: "completed",
+            //   createdAt: new Date().toISOString(),
+            // });
             setDone(true);
             setTimeout(() => {
               setDone(false);
@@ -119,13 +119,13 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
 
           if (status.status === "Rejected") {
             console.error("❌ Transaction REJECTED by network");
-            addTransaction({
-              id: actualId,
-              type: "gift_sent",
-              amount: gift.price,
-              status: "failed",
-              createdAt: new Date().toISOString(),
-            });
+            // addTransaction({
+            //   id: actualId,
+            //   type: "gift_sent",
+            //   amount: gift.price,
+            //   status: "failed",
+            //   createdAt: new Date().toISOString(),
+            // });
             return;
           }
 
@@ -258,7 +258,7 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
             </div>
           )} */}
 
-          {noRecipient && !insufficient && (
+          {noRecipient && (
             <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-fadeIn">
               <AlertTriangle
                 size={14}
