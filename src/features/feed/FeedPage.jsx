@@ -14,6 +14,7 @@ import { useInView } from "react-intersection-observer";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { usePostStore } from "../../store/usePostStore";
 import { fieldToString, parseAleoPost } from "../../lib/aleo/index";
+import {ALEO_PROGRAM_NAME,ALEO_FEE,TOKEN_DECIMALS,toU128,DECIMAL_MULTIPLIER} from "../../config/config"
 
 const CATEGORIES = ["All", "Whistleblowing", "Finance", "Private Communities"];
 const SORT_OPTIONS = [
@@ -35,7 +36,7 @@ export default function FeedPage() {
   const posts = usePostStore((state) => state.posts);
   const addOrUpdatePost = usePostStore((state) => state.addOrUpdatePost);
 
-  const PROGRAM_ID = "shadowsphere_social9.aleo";
+  const PROGRAM_ID = ALEO_PROGRAM_NAME;
 
   const mapCategory = (cat) => {
     switch (Number(cat)) {

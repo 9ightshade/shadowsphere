@@ -5,6 +5,7 @@ import GiftModal from "./GiftModal";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { usePostStore } from "../../../store/usePostStore";
 import CommentModal from "./CommentModal";
+import { ALEO_PROGRAM_NAME, ALEO_FEE } from "../../../config/config";
 export default function PostActions({
   postId,
   likes,
@@ -17,7 +18,7 @@ export default function PostActions({
   const [giftOpen, setGiftOpen] = useState(false);
   const { executeTransaction, transactionStatus } = useWallet();
   const incrementLikes = usePostStore((state) => state.incrementLikes);
-  
+
   const [commentOpen, setCommentOpen] = useState(false);
   const handleLike = async () => {
     if (liked || loading) return;
@@ -30,7 +31,7 @@ export default function PostActions({
       console.log("Submitting like TX:", formattedInput);
 
       const result = await executeTransaction({
-        program: "shadowsphere_social9.aleo",
+        program: ALEO_PROGRAM_NAME,
         function: "like_post",
         inputs: [formattedInput],
         fee: 100000,

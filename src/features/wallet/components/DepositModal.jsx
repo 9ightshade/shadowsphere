@@ -9,11 +9,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useState } from "react";
-import {
-  ALEO_PROGRAM_NAME,
-  TOKEN_DECIMALS,
-  DEFAULT_FEE,
-} from "../../../config/config";
+import { ALEO_CONFIG } from "../../../config/aleo";
 const NETWORKS = ["Aleo Mainnet", "Aleo Testnet"];
 
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
@@ -79,6 +75,7 @@ export default function DepositModal({ open, onClose, balance }) {
     }
   };
 
+
   const MIN_DEPOSIT = 1000000n; // 1000000u128
 
   const handleConfirm = async () => {
@@ -94,7 +91,7 @@ export default function DepositModal({ open, onClose, balance }) {
 
       // Convert UI amount → smallest unit (u128)
       const parsedAmount = BigInt(
-        Math.floor(Number(amount) * 10 ** TOKEN_DECIMALS),
+        Math.floor(Number(amount) * 10 ** ALEO_CONFIG.TOKEN_DECIMALS),
       );
 
       // ✅ Enforce minimum deposit
@@ -107,10 +104,10 @@ export default function DepositModal({ open, onClose, balance }) {
       const inputValue = `${parsedAmount}u128`;
 
       const tx = await executeTransaction({
-        program: ALEO_PROGRAM_NAME,
+        program: "shadowsphere_social11.aleo",
         function: "deposit",
         inputs: [inputValue],
-        fee: DEFAULT_FEE,
+        fee: 100000,
         privateFee: false,
       });
 

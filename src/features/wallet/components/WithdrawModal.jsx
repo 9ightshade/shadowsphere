@@ -9,11 +9,12 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+import {ALEO_PROGRAM_NAME, ALEO_FEE} from "../../../config/config"
 
 const NETWORKS = ["Aleo Mainnet", "Aleo Testnet"];
 
 export default function WithdrawModal({ open, onClose, balance }) {
-  const [network, setNetwork] = useState(NETWORKS[0]);
+  // const [network, setNetwork] = useState(NETWORKS[0]);
   const { executeTransaction, connected, transactionStatus } = useWallet();
 
   const [amount, setAmount] = useState("");
@@ -98,17 +99,17 @@ export default function WithdrawModal({ open, onClose, balance }) {
       const inputAmount = `${parsedAmountU128}u128`;
 
       const tx = await executeTransaction({
-        program: "shadowsphere_social9.aleo",
+        program: ALEO_PROGRAM_NAME,
         function: "withdraw",
         inputs: [inputAmount],
-        fee: 100000,
+        fee: ALEO_FEE,
         privateFee: false,
       });
 
       console.log("🚀 Withdrawal submitted:", {
         txId: tx.transactionId,
         amount: inputAmount,
-        program: "shadowsphere_social9.aleo",
+        program: ALEO_PROGRAM_NAME,
         function: "withdraw",
       });
 
@@ -184,7 +185,7 @@ export default function WithdrawModal({ open, onClose, balance }) {
           </div>
 
           {/* Network */}
-          <div className="flex flex-col gap-1.5">
+          {/* <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-widest">
               Network
             </label>
@@ -204,7 +205,7 @@ export default function WithdrawModal({ open, onClose, balance }) {
                 </button>
               ))}
             </div>
-          </div>
+          </div> */}
 
           {/* Amount */}
           <div className="flex flex-col gap-1.5">
@@ -269,28 +270,6 @@ export default function WithdrawModal({ open, onClose, balance }) {
             )}
           </div>
 
-          {/* Destination address */}
-          {/* <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-widest flex items-center gap-1.5">
-              <Shield size={10} className="text-indigo-400" />
-              Destination Address
-            </label>
-            <div
-              className={`flex items-center gap-2 px-4 py-3 rounded-xl bg-[var(--color-surface-2)] border transition-all duration-300
-              ${
-                address.trim()
-                  ? "border-indigo-500/40 ring-2 ring-indigo-500/10"
-                  : "border-[var(--color-border)] focus-within:border-indigo-500/40 focus-within:ring-2 focus-within:ring-indigo-500/10"
-              }`}>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="aleo1..."
-                className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]/40 focus:outline-none"
-              />
-            </div>
-          </div> */}
 
           {/* Fee summary */}
           {parsedAmount > 0 && (
