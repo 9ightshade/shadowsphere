@@ -66,7 +66,6 @@ export default function HeroSection() {
     setIsSubmitting(true);
 
     try {
-
       const functionName = mode === "register" ? "register" : "verify_login";
       let tx;
       if (functionName === "register") {
@@ -144,8 +143,18 @@ export default function HeroSection() {
 
       setShowSuccess(true);
 
-      // Navigate AFTER success
-      navigate("/feed");
+      if (mode === "verify_login") {
+        // ✅ Only login can navigate
+        setTimeout(() => {
+          navigate("/feed");
+        }, 1200);
+      } else {
+        // ✅ Registration should NOT navigate
+        // Instead switch to login mode and notify user
+        setTimeout(() => {
+          setMode("verify_login");
+        }, 1500);
+      }
     } catch (error) {
       console.error(`${mode} failed:`, error);
     } finally {
