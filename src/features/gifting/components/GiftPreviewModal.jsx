@@ -1,39 +1,248 @@
+/* eslint-disable no-unused-vars */
 // ─── GiftPreviewModal.jsx ─────────────────────────────────────────────────────
 import { useState } from "react";
 import { useWalletStore } from "../../../store/useWalletStore";
 import { v4 as uuid } from "uuid";
 import { X, Send, AlertTriangle, Lock, Sparkles } from "lucide-react";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 export default function GiftPreviewModal({ gift, recipient, onClose }) {
   const { balance, addTransaction } = useWalletStore();
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState(false);
+  const { executeTransaction, transactionStatus } = useWallet();
+  const [recipientAddress, setRecipientAddress] = useState("");
 
   if (!gift) return null;
 
   const insufficient = balance < gift.price;
-  const noRecipient = !recipient.trim();
-  const canSend = !insufficient && !noRecipient;
+  const noRecipient = !recipientAddress.trim();
+  const canSend = !noRecipient;
 
+  // const handleConfirm = async () => {
+  //   if (!canSend || sending) return;
+
+  //   try {
+  //     setSending(true);
+
+  //     // 1. Conversion Logic: Multiply by 1,000,000 to handle 6 decimals
+  //     // If gift.price is 0.5, rawAmount becomes 500000
+  //     const DECIMALS = 1_000_000;
+  //     const rawAmount = Math.floor(gift.price * DECIMALS);
+
+  //     // 2. Format as Aleo literals
+  //     const amountInput = `${rawAmount}u128`;
+  //     const giftIdInput = `${gift.id ?? 0}u32`; // IDs are typically u32
+  //     const feeInput = 100_000; // This is already in microcredits (0.1 credits)
+
+  //     const txId = await executeTransaction({
+  //       program: "shadowsphere_social9.aleo",
+  //       function: "send_gift",
+  //       inputs: [
+  //         recipientAddress, // aleo1... address
+  //         amountInput, // "500000u128"
+  //         "0field", // placeholder field
+  //         giftIdInput, // "1u32"
+  //       ],
+  //       fee: feeInput,
+  //       privateFee: false,
+  //     });
+
+  //     console.log("🚀 Transaction Sent. ID:", txId);
+
+  //     // Add as pending immediately (Store the UI amount for display)
+  //     addTransaction({
+  //       id: txId,
+  //       type: "gift_sent",
+  //       amount: gift.price, // Keep as 0.5 for the UI display
+  //       status: "pending",
+  //       createdAt: new Date().toISOString(),
+  //     });
+
+  //     // ───── Poll for confirmation ─────
+  //     const start = Date.now();
+  //     const timeout = 60_000;
+  //     const intervalMs = 2000;
+
+  //     const poll = async () => {
+  //       try {
+  //         const status = await transactionStatus(txId.transactionId);
+
+  //         if (status === "Accepted") {
+  //           addTransaction({
+  //             id: txId,
+  //             type: "gift_sent",
+  //             amount: gift.price,
+  //             status: "completed",
+  //             createdAt: new Date().toISOString(),
+  //           });
+
+  //           setDone(true);
+  //           setTimeout(() => {
+  //             setDone(false);
+  //             onClose();
+  //           }, 1400);
+  //           return;
+  //         }
+
+  //         if (status === "Rejected") {
+  //           addTransaction({
+  //             id: txId,
+  //             type: "gift_sent",
+  //             amount: gift.price,
+  //             status: "failed",
+  //             createdAt: new Date().toISOString(),
+  //           });
+  //           return;
+  //         }
+
+  //         if (Date.now() - start < timeout) {
+  //           setTimeout(poll, intervalMs);
+  //         } else {
+  //           console.warn("Transaction polling timed out.");
+  //         }
+  //       } catch (err) {
+  //         console.error("Polling error:", err);
+  //       }
+  //     };
+
+  //     poll();
+  //   } catch (err) {
+  //     console.error("Gift failed:", err);
+  //   } finally {
+  //     setSending(false);
+  //   }
+  // };
   const handleConfirm = async () => {
     if (!canSend || sending) return;
-    setSending(true);
-    await new Promise((r) => setTimeout(r, 1000));
 
-    addTransaction({
-      id: uuid(),
-      type: "gift_sent",
-      amount: gift.price,
-      status: "pending",
-      createdAt: new Date().toISOString(),
-    });
+    try {
+      setSending(true);
+      console.log("🛠 Preparing Aleo Transaction...");
 
-    setSending(false);
-    setDone(true);
-    setTimeout(() => {
-      setDone(false);
-      onClose();
-    }, 1400);
+      const DECIMALS = 1_000_000;
+      const rawAmount = Math.floor(gift.price * DECIMALS);
+      const amountInput = `${rawAmount}u128`;
+      const giftIdInput = `${gift.id ?? 0}u32`;
+
+      // 2. Construct the Payload
+      const txPayload = {
+        program: "shadowsphere_social9.aleo",
+        function: "send_gift",
+        inputs: [
+          recipientAddress, // Address string
+          amountInput, // e.g., "500000u128"
+          "0field", // Placeholder
+          giftIdInput, // e.g., "1u32"
+        ],
+        fee: 100_000,
+        privateFee: false,
+      };
+
+      // 3. LOG THE PAYLOAD
+      console.log("📦 EXECUTE TRANSACTION PAYLOAD:");
+      console.table({
+        Program: txPayload.program,
+        Function: txPayload.function,
+        Fee: `${txPayload.fee} microcredits`,
+        Address: txPayload.inputs[0],
+        Amount: txPayload.inputs[1],
+        GiftID: txPayload.inputs[3],
+      });
+      console.log(`💎 Gift: ${gift.price} USDCx -> Raw: ${amountInput}`);
+
+      const result = await executeTransaction({
+        program: "shadowsphere_social9.aleo",
+        function: "send_gift",
+        inputs: [recipientAddress, amountInput, "1field", giftIdInput],
+        fee: 100_000,
+        privateFee: false,
+      });
+
+      const actualId = result.transactionId;
+      console.log("🚀 Transaction broadcasted! ID:", actualId);
+
+      addTransaction({
+        id: actualId,
+        type: "gift_sent",
+        amount: gift.price,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      });
+
+      // ───── Polling Logic with Progress Logs ─────
+      const start = Date.now();
+      const timeout = 120_000; // 2 minutes (Aleo can be slow on testnet)
+      const intervalMs = 3000;
+      let attempts = 0;
+
+      const poll = async () => {
+        attempts++;
+        const elapsed = Math.floor((Date.now() - start) / 1000);
+
+        try {
+          console.log(
+            `🔍 [Attempt ${attempts}] Checking status for: ${actualId} (${elapsed}s elapsed)`,
+          );
+
+          const status = await transactionStatus(actualId);
+          console.log(
+            `📡 Current On-Chain Status: %c${status.status}`,
+            "color: #818cf8; font-weight: bold;",
+          );
+
+          if (status.status === "Accepted") {
+            console.log("✅ Transaction SUCCESSFUL");
+            addTransaction({
+              id: actualId,
+              type: "gift_sent",
+              amount: gift.price,
+              status: "completed",
+              createdAt: new Date().toISOString(),
+            });
+            setDone(true);
+            setTimeout(() => {
+              setDone(false);
+              onClose();
+            }, 1400);
+            return;
+          }
+
+          if (status.status === "Rejected") {
+            console.error("❌ Transaction REJECTED by network");
+            addTransaction({
+              id: actualId,
+              type: "gift_sent",
+              amount: gift.price,
+              status: "failed",
+              createdAt: new Date().toISOString(),
+            });
+            return;
+          }
+
+          // Continue polling if not timed out
+          if (Date.now() - start < timeout) {
+            setTimeout(poll, intervalMs);
+          } else {
+            console.warn(
+              "⚠️ Polling TIMEOUT: Transaction is taking longer than 2 minutes.",
+            );
+          }
+        } catch (err) {
+          // Log the error but keep polling (it might just be the RPC warming up)
+          console.log("⏳ Waiting for transaction to be indexed...");
+          if (Date.now() - start < timeout) {
+            setTimeout(poll, intervalMs);
+          }
+        }
+      };
+
+      poll();
+    } catch (err) {
+      console.error("❌ Gift Execution Failed:", err);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -90,7 +299,7 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
           </div>
 
           {/* ── Recipient info ─────────────────────── */}
-          <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)]">
+          {/* <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)]">
             <Lock size={13} className="text-indigo-400 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] text-[var(--color-text-secondary)] font-medium uppercase tracking-widest">
@@ -104,10 +313,26 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
                 )}
               </p>
             </div>
-          </div>
+          </div> */}
+          <div className="flex items-start gap-3 px-4 py-3 rounded-xl bg-[var(--color-surface-2)] border border-[var(--color-border)]">
+            <Lock size={13} className="text-indigo-400 flex-shrink-0 mt-1" />
 
+            <div className="flex-1 min-w-0 space-y-1.5">
+              <p className="text-[10px] text-[var(--color-text-secondary)] font-medium uppercase tracking-widest">
+                Recipient Address
+              </p>
+
+              <input
+                type="text"
+                value={recipientAddress}
+                onChange={(e) => setRecipientAddress(e.target.value)}
+                placeholder="aleo1..."
+                className="w-full bg-transparent outline-none text-sm font-semibold text-[var(--color-text-primary)] placeholder:text-[var(--color-text-secondary)]"
+              />
+            </div>
+          </div>
           {/* ── Warnings ───────────────────────────── */}
-          {insufficient && (
+          {/* {insufficient && (
             <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-rose-500/10 border border-rose-500/20 animate-fadeIn">
               <AlertTriangle
                 size={14}
@@ -122,7 +347,7 @@ export default function GiftPreviewModal({ gift, recipient, onClose }) {
                 </p>
               </div>
             </div>
-          )}
+          )} */}
 
           {noRecipient && !insufficient && (
             <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 animate-fadeIn">

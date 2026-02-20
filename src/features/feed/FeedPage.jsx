@@ -64,18 +64,18 @@ export default function FeedPage() {
 
         const data = await res.json();
 
-        console.log("res post", data);
+        // console.log("res post", data);
 
         const formattedPost = parseAleoPost(data);
 
       if (formattedPost) {
         addOrUpdatePost(formattedPost);
-        console.log("Stored post:", formattedPost);
+        // console.log("Stored post:", formattedPost);
         fetchedCount++;
       }
         addOrUpdatePost(formattedPost);
 
-        console.log("Stored post:", formattedPost);
+        // console.log("Stored post:", formattedPost);
 
         fetchedCount++;
       } catch (err) {
