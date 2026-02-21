@@ -14,14 +14,8 @@ import { useInView } from "react-intersection-observer";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { usePostStore } from "../../store/usePostStore";
 import { fieldToString, parseAleoPost } from "../../lib/aleo/index";
-import {
-  ALEO_PROGRAM_NAME,
-  ALEO_FEE,
-  TOKEN_DECIMALS,
-  toU128,
-  DECIMAL_MULTIPLIER,
-} from "../../config/config";
-import { usePostSync } from "../../hooks/usePostSync";
+import {ALEO_PROGRAM_NAME,ALEO_FEE,TOKEN_DECIMALS,toU128,DECIMAL_MULTIPLIER} from "../../config/config"
+import {usePostSync} from "../../hooks/usePostSync"
 
 const CATEGORIES = ["All", "Whistleblowing", "Finance", "Private Communities"];
 const SORT_OPTIONS = [
@@ -31,7 +25,6 @@ const SORT_OPTIONS = [
 
 export default function FeedPage() {
   const [open, setOpen] = useState(false);
-  // const {posts, refetch} = usePostSync();
   const [filter, setFilter] = useState(null);
   const [sort, setSort] = useState("Latest");
   const [mounted, setMounted] = useState(false);
@@ -43,7 +36,6 @@ export default function FeedPage() {
   // ✅ Zustand store
   const posts = usePostStore((state) => state.posts);
   const addOrUpdatePost = usePostStore((state) => state.addOrUpdatePost);
-  // const posts = usePostStore((state) => state.posts);
 
   const PROGRAM_ID = ALEO_PROGRAM_NAME;
 
@@ -60,48 +52,7 @@ export default function FeedPage() {
     }
   };
 
-  // const fetchPostsBatch = async (batchSize = 5) => {
-  //   let fetchedCount = 0;
-
-  //   for (let i = 0; i < batchSize; i++) {
-  //     const postId = maxPostId + i;
-
-  //     const endpoint = `https://testnet.aleoscan.io/testnet/program/${PROGRAM_ID}/mapping/posts/${postId}u32`;
-
-  //     try {
-  //       const res = await fetch(endpoint);
-  //       if (!res.ok) throw new Error("Not found");
-
-  //       const data = await res.json();
-
-  //       // console.log("res post", data);
-
-  //       const formattedPost = parseAleoPost(data);
-
-  //       if (formattedPost) {
-  //         addOrUpdatePost(formattedPost);
-  //         // console.log("Stored post:", formattedPost);
-  //         fetchedCount++;
-  //       }
-  //       addOrUpdatePost(formattedPost);
-
-  //       // console.log("Stored post:", formattedPost);
-
-  //       fetchedCount++;
-  //     } catch (err) {
-  //       console.warn(`Skipping post ${postId}`);
-  //     }
-  //   }
-
-  //   // Move pointer forward only by successful fetches
-  //   if (fetchedCount > 0) {
-  //     setMaxPostId((prev) => prev + fetchedCount);
-  //   }
-  // };
   const fetchPostsBatch = async (batchSize = 5) => {
-    const { posts, setPosts } = usePostStore.getState();
-
-    let newPosts = [];
     let fetchedCount = 0;
 
     for (let i = 0; i < batchSize; i++) {
@@ -114,41 +65,32 @@ export default function FeedPage() {
         if (!res.ok) throw new Error("Not found");
 
         const data = await res.json();
+
+        // console.log("res post", data);
+
         const formattedPost = parseAleoPost(data);
 
-        if (formattedPost) {
-          newPosts.push(formattedPost);
-          fetchedCount++;
-        }
-      } catch {
+      if (formattedPost) {
+        addOrUpdatePost(formattedPost);
+        // console.log("Stored post:", formattedPost);
+        fetchedCount++;
+      }
+        addOrUpdatePost(formattedPost);
+
+        // console.log("Stored post:", formattedPost);
+
+        fetchedCount++;
+      } catch (err) {
         console.warn(`Skipping post ${postId}`);
       }
     }
 
-    if (newPosts.length > 0) {
-      // Merge + deduplicate by id
-      const merged = [...posts];
-
-      newPosts.forEach((incoming) => {
-        const index = merged.findIndex((p) => p.id === incoming.id);
-
-        if (index > -1) {
-          merged[index] = { ...merged[index], ...incoming };
-        } else {
-          merged.push(incoming);
-        }
-      });
-
-      setPosts(merged);
-    }
-
+    // Move pointer forward only by successful fetches
     if (fetchedCount > 0) {
       setMaxPostId((prev) => prev + fetchedCount);
     }
-
-    // ✅ Log FULL Zustand array AFTER commit
-    console.log("Full posts array in Zustand:", usePostStore.getState().posts);
   };
+
   // Initial fetch
   useEffect(() => {
     fetchPostsBatch(5);
@@ -157,19 +99,16 @@ export default function FeedPage() {
   // Infinite scroll trigger
   useEffect(() => {
     if (inView) {
-      fetchPostsBatch(7);
+      fetchPostsBatch(5);
     }
   }, [inView]);
-  useEffect(() => {
-    console.log("Posts ready to map:", posts);
-  }, [posts]);
 
   const filtered = posts.filter((p) => !filter || p.category === filter);
 
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    console.log("Connected:", connected, address);
+    // console.log("Connected:", connected, address);
   }, [connected, address]);
   return (
     <div className="relative flex flex-col gap-6 feed-root">
