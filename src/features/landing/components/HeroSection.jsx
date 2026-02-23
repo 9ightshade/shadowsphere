@@ -230,7 +230,7 @@ export default function HeroSection() {
                 <div className="flex gap-2 p-1 bg-gray-900/50 rounded-2xl">
                   <button
                     onClick={() => setMode("verify_login")}
-                    className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    className={`flex-1 px-6 py-3 rounded-xl cursor-pointer font-medium transition-all duration-300 ${
                       mode === "verify_login"
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
                         : "text-gray-400 hover:text-white hover:bg-gray-800/50"
@@ -239,7 +239,7 @@ export default function HeroSection() {
                   </button>
                   <button
                     onClick={() => setMode("register")}
-                    className={`flex-1 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
+                    className={`flex-1 px-6 py-3 rounded-xl font-medium cursor-pointer transition-all duration-300 ${
                       mode === "register"
                         ? "bg-indigo-600 text-white shadow-lg shadow-indigo-500/30"
                         : "text-gray-400 hover:text-white hover:bg-gray-800/50"
@@ -291,7 +291,7 @@ export default function HeroSection() {
                     type="submit"
                     onClick={handleSubmit}
                     disabled={isSubmitting}
-                    className="w-full py-4 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-500 hover:to-purple-500 active:scale-[0.98] transition-all duration-300 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
+                    className="w-full cursor-pointer py-4 rounded-xl bg-linear-to-r from-indigo-600 to-purple-600 text-white font-semibold hover:from-indigo-500 hover:to-purple-500 active:scale-[0.98] transition-all duration-300 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50 disabled:opacity-50 disabled:cursor-not-allowed relative overflow-hidden group">
                     <span className="absolute inset-0 w-full h-full bg-linear-to-r from-purple-600 to-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></span>
                     <span className="relative flex items-center justify-center gap-2">
                       {isSubmitting ? (

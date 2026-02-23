@@ -1,67 +1,101 @@
 /* eslint-disable no-unused-vars */
 // ─── FriendsPage.jsx ──────────────────────────────────────────────────────────
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useFriendsStore } from "../../store/useFriendsStore";
 import FriendTabs from "./components/FriendTabs";
 import FriendCard from "./components/FriendCard";
 import RequestCard from "./components/RequestCard";
 import InviteFriendModal from "./components/InviteFriendModal";
 import { Users, Shield, UserPlus } from "lucide-react";
+import { ALEO_FEE, ALEO_PROGRAM_NAME } from "../../config/config";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+import { parseAleoStruct } from "../../lib/aleo/index";
 
 export default function FriendsPage() {
-  const store = useFriendsStore();
-  const tab = store?.tab ?? "friends";
+  const {
+    friends,
+    incoming,
+    outgoing,
+    setFriends,
+    setIncoming,
+    setOutgoing,
+    syncFriendRecords,
+    setTab,
+    tab,
+  } = useFriendsStore();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const { connected, address, requestRecords, decrypt } = useWallet();
+  const PROGRAM_ID = ALEO_PROGRAM_NAME;
 
-  const mockFriends = useMemo(
-    () => [
-      {
-        id: "1",
-        name: "Alex Johnson",
-        from: { alias: "Alex Johnson" },
-        username: "alexj",
-        avatar: "https://i.pravatar.cc/150?img=1",
-        isOnline: true,
-      },
-      {
-        id: "2",
-        name: "Sarah Kim",
-        from: { alias: "Sarah Kim" },
-        username: "sarahk",
-        avatar: "https://i.pravatar.cc/150?img=2",
-        isOnline: false,
-      },
-    ],
-    [],
-  );
+  useEffect(() => {
+    if (!connected || !address) return;
 
-  const mockIncoming = useMemo(
-    () => [
-      {
-        id: "3",
-        from: { alias: "Daniel Reed" },
-        username: "danielr",
-        avatar: "https://i.pravatar.cc/150?img=3",
-      },
-    ],
-    [],
-  );
+    const fetchFriendRequests = async () => {
+      try {
+        const records = await requestRecords(PROGRAM_ID, false);
 
-  const mockOutgoing = useMemo(
-    () => [
-      {
-        id: "4",
-        from: { alias: "Emily Stone" },
-        username: "emilys",
-        avatar: "https://i.pravatar.cc/150?img=4",
-      },
-    ],
-    [],
-  );
+        console.log("all records:", records);
 
-  const friends = store?.friends?.length ? store.friends : null;
-  const incoming = store?.incoming?.length ? store.incoming : null;
-  const outgoing = store?.outgoing?.length ? store.outgoing : null;
+        if (!records || records.length === 0) return;
+
+        const incomingList = [];
+        const outgoingList = [];
+        const friendsList = [];
+
+        const normalize = (a) => a?.replace(".private", "");
+        for (const record of records) {
+          if (record.functionName !== "add_friend") continue;
+          if (record.spent === true) continue;
+
+          const decrypted = await decrypt(record.recordCiphertext);
+          if (!decrypted) continue;
+
+          const decryptedStruct = parseAleoStruct(decrypted);
+
+           console.log("decrypted struct:", decryptedStruct);
+
+          const owner = decryptedStruct.owner;
+          const friend = decryptedStruct.to;
+
+          if (!owner || !friend) continue;
+
+          const baseObject = {
+            id: record.commitment,
+            from: owner,
+            to: friend,
+            username:
+              normalize(owner) === normalize(address)
+                ? friend.slice(0, 10)
+                : owner.slice(0, 10),
+            address: normalize(owner) === normalize(address) ? friend : owner,
+            blockHeight: record.blockHeight,
+            timestamp: record.blockTimestamp,
+            transactionId: record.transactionId?.trim(),
+          };
+
+          console.log("base", baseObject);
+
+          // 🔥 CLASSIFICATION
+          if (normalize(owner) === normalize(address)) {
+            outgoingList.push(baseObject);
+          } else if (normalize(friend) === normalize(address)) {
+            incomingList.push(baseObject);
+          }
+        }
+
+        // 🔒 Deduplicate by commitment
+        const dedupe = (arr) =>
+          Array.from(new Map(arr.map((r) => [r.id, r])).values());
+
+        setIncoming(dedupe(incomingList));
+        setOutgoing(dedupe(outgoingList));
+      } catch (err) {
+        console.error("Friend record sync failed:", err);
+      }
+    };
+
+    fetchFriendRequests();
+  }, [connected, address]);
 
   const counts = {
     friends: friends?.length,
@@ -103,8 +137,7 @@ export default function FriendsPage() {
               bg-gradient-to-r from-indigo-600 to-purple-600
               hover:from-indigo-500 hover:to-purple-500
               shadow-md shadow-indigo-500/25 hover:shadow-indigo-500/40
-              active:scale-95 transition-all duration-300 relative overflow-hidden"
-          >
+              active:scale-95 transition-all duration-300 relative overflow-hidden">
             <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
             <UserPlus
               size={15}
@@ -146,8 +179,7 @@ export default function FriendsPage() {
               <div
                 key={item?.id}
                 className="friend-item"
-                style={{ animationDelay: `${i * 60}ms` }}
-              >
+                style={{ animationDelay: `${i * 60}ms` }}>
                 {tab === "friends" ? (
                   <FriendCard user={item} />
                 ) : (
@@ -160,22 +192,48 @@ export default function FriendsPage() {
 
         <style jsx>{`
           @keyframes fadeSlideUp {
-            from { opacity: 0; transform: translateY(14px); }
-            to   { opacity: 1; transform: translateY(0); }
+            from {
+              opacity: 0;
+              transform: translateY(14px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
           @keyframes fadeSlideRight {
-            from { opacity: 0; transform: translateX(-12px); }
-            to   { opacity: 1; transform: translateX(0); }
+            from {
+              opacity: 0;
+              transform: translateX(-12px);
+            }
+            to {
+              opacity: 1;
+              transform: translateX(0);
+            }
           }
           @keyframes fadeIn {
-            from { opacity: 0; }
-            to   { opacity: 1; }
+            from {
+              opacity: 0;
+            }
+            to {
+              opacity: 1;
+            }
           }
-          .friends-header { animation: fadeSlideUp 0.4s ease-out 0.05s both; }
-          .friends-tabs   { animation: fadeSlideUp 0.4s ease-out 0.1s both; }
-          .friends-list   { animation: fadeSlideUp 0.4s ease-out 0.15s both; }
-          .friends-empty  { animation: fadeIn 0.4s ease-out both; }
-          .friend-item    { animation: fadeSlideRight 0.35s ease-out both; }
+          .friends-header {
+            animation: fadeSlideUp 0.4s ease-out 0.05s both;
+          }
+          .friends-tabs {
+            animation: fadeSlideUp 0.4s ease-out 0.1s both;
+          }
+          .friends-list {
+            animation: fadeSlideUp 0.4s ease-out 0.15s both;
+          }
+          .friends-empty {
+            animation: fadeIn 0.4s ease-out both;
+          }
+          .friend-item {
+            animation: fadeSlideRight 0.35s ease-out both;
+          }
         `}</style>
       </div>
 
