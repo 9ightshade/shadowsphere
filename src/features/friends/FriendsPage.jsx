@@ -7,9 +7,9 @@ import FriendCard from "./components/FriendCard";
 import RequestCard from "./components/RequestCard";
 import InviteFriendModal from "./components/InviteFriendModal";
 import { Users, Shield, UserPlus } from "lucide-react";
-import { ALEO_FEE, ALEO_PROGRAM_NAME } from "../../config/config";
+import {  ALEO_PROGRAM_NAME } from "../../config/config";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
-import { parseAleoStruct } from "../../lib/aleo/index";
+import { fieldToString, parseAleoStruct } from "../../lib/aleo/index";
 
 export default function FriendsPage() {
   const {
@@ -34,7 +34,7 @@ export default function FriendsPage() {
       try {
         const records = await requestRecords(PROGRAM_ID, false);
 
-        console.log("all records:", records);
+        // console.log("all records:", records);
 
         if (!records || records.length === 0) return;
 
@@ -47,12 +47,14 @@ export default function FriendsPage() {
           if (record.functionName !== "add_friend") continue;
           if (record.spent === true) continue;
 
+          // console.log("owner", fieldToString(record.owner));
+
           const decrypted = await decrypt(record.recordCiphertext);
           if (!decrypted) continue;
 
           const decryptedStruct = parseAleoStruct(decrypted);
 
-           console.log("decrypted struct:", decryptedStruct);
+          // console.log("decrypted struct:", decryptedStruct);
 
           const owner = decryptedStruct.owner;
           const friend = decryptedStruct.to;
@@ -73,7 +75,7 @@ export default function FriendsPage() {
             transactionId: record.transactionId?.trim(),
           };
 
-          console.log("base", baseObject);
+          // console.log("base", baseObject);
 
           // 🔥 CLASSIFICATION
           if (normalize(owner) === normalize(address)) {

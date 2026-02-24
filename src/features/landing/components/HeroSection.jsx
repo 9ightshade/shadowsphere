@@ -33,7 +33,7 @@ export default function HeroSection() {
       // requestRecords is provided by the useWallet() hook
       const records = await requestRecords(ALEO_PROGRAM_NAME);
 
-      console.log("Records:", records);
+      // console.log("Records:", records);
 
       // Optional: Filter for unspent records if needed
       // const unspent = records.filter(r => !r.spent);
@@ -106,7 +106,7 @@ export default function HeroSection() {
         }
 
         const identityHash = match[1]; // This will be "508059...0055field"
-        console.log("Extracted Identity Hash for login:", identityHash);
+        // console.log("Extracted Identity Hash for login:", identityHash);
 
         // 3️⃣ Execute verify_login with ONLY the hash
         tx = await executeTransaction({
@@ -118,7 +118,7 @@ export default function HeroSection() {
         });
       }
 
-      console.log(`${mode} tx submitted:`, tx.transactionId);
+      // console.log(`${mode} tx submitted:`, tx.transactionId);
 
       let confirmed = false;
 
@@ -127,7 +127,7 @@ export default function HeroSection() {
 
         const status = await transactionStatus(tx.transactionId);
 
-        console.log("Current status:", status.status);
+        // console.log("Current status:", status.status);
 
         if (status.status === "Accepted") {
           confirmed = true;
