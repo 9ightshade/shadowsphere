@@ -1,88 +1,68 @@
 // ─── InviteFriendModal.jsx ────────────────────────────────────────────────────
-import { X, UserPlus, Shield, Copy, Check, AlertCircle } from "lucide-react";
-import { useState } from "react";
+import {
+  X,
+  UserPlus,
+  Shield,
+  Clipboard,
+  Check,
+  AlertCircle,
+  Loader2,
+  ArrowRight,
+} from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { ALEO_PROGRAM_NAME, ALEO_FEE } from "../../../config/config";
+
 export default function InviteFriendModal({ open, onClose }) {
   const [address, setAddress] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState(null);
   const [done, setDone] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [pasted, setPasted] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const inputRef = useRef(null);
   const { executeTransaction, transactionStatus } = useWallet();
+
+  // Auto-focus input when modal opens
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 150);
+    } else {
+      setAddress("");
+      setDone(false);
+      setPasted(false);
+    }
+  }, [open]);
 
   if (!open) return null;
 
-  // Validate Aleo address format (starts with aleo1, 63 chars total)
   const isValidAddress = address.startsWith("aleo1") && address.length === 63;
-  const canSubmit = address.trim().length > 0 && isValidAddress;
+  const hasInput = address.trim().length > 0;
+  const canSubmit =
+    hasInput && isValidAddress && !submitting && !confirming && !done;
+  // Determine input border/ring state
+  const inputState = !hasInput
+    ? focused
+      ? "focused"
+      : "idle"
+    : isValidAddress
+      ? "valid"
+      : "invalid";
 
-  //   const handleSubmit = async () => {
-  //     if (!canSubmit || submitting) return;
-
-  //     try {
-  //       setSubmitting(true);
-
-  //       // ─── Execute on-chain friend request ───
-  //       const txId = await executeTransaction({
-  //         program: ALEO_PROGRAM_NAME,
-  //         function: "add_friend",
-  //         inputs: [address],
-  //         fee: 100000,
-  //         privateFee: false,
-  //       });
-
-  //       // ─── Poll for confirmation ───
-  //       const start = Date.now();
-  //       const timeout = 60_000; // 60s max
-  //       const intervalMs = 2000;
-
-  //       const poll = async () => {
-  //         try {
-  //           const status = await transactionStatus(txId.transactionId);
-
-  //           if (status === "Accepted") {
-  //             setDone(true);
-
-  //             setTimeout(() => {
-  //               setDone(false);
-  //               setAddress("");
-  //               onClose();
-  //             }, 1500);
-
-  //             return;
-  //           }
-
-  //           if (status === "Rejected") {
-  //             console.error("Friend request rejected");
-  //             return;
-  //           }
-
-  //           if (Date.now() - start < timeout) {
-  //             setTimeout(poll, intervalMs);
-  //           } else {
-  //             console.warn("Friend request polling timed out");
-  //           }
-  //         } catch (err) {
-  //           console.error("Polling error:", err);
-  //         }
-  //       };
-
-  //       poll();
-  //     } catch (err) {
-  //       console.error("Invite failed:", err);
-  //     } finally {
-  //       setSubmitting(false);
-  //     }
-  //   };
-
+  const inputClasses = {
+    idle: "border-[var(--color-border)]",
+    focused: "border-indigo-500/50 ring-2 ring-indigo-500/10",
+    valid: "border-green-500/40 ring-2 ring-green-500/10",
+    invalid: "border-rose-500/40 ring-2 ring-rose-500/10",
+  }[inputState];
   const handleSubmit = async () => {
-    if (!canSubmit || submitting) return;
+    if (!canSubmit) return;
+
+    setError(null);
+    setSubmitting(true);
 
     try {
-      setSubmitting(true);
-      console.log("📨 Initiating Friend Request on Aleo...");
-
-      // ─── Execute Transaction ───
       const result = await executeTransaction({
         program: ALEO_PROGRAM_NAME,
         function: "add_friend",
@@ -91,277 +71,287 @@ export default function InviteFriendModal({ open, onClose }) {
         privateFee: false,
       });
 
-      // Extract ID string (handles both object and string returns)
-      const txId = result.transactionId;
+      const txId = result?.transactionId;
+      if (!txId) throw new Error("Transaction ID not returned");
 
-      if (!txId) throw new Error("Transaction ID was not returned by wallet");
+      // Wallet broadcast complete
+      setSubmitting(false);
+      setConfirming(true);
 
-      console.log(`🚀 Broadcast Successful! \nID: ${txId}`);
-
-      // ─── Poll for confirmation ───
       const start = Date.now();
-      const timeout = 90_000; // Increased to 90s for network indexing
+      const timeout = 90_000;
       const intervalMs = 3000;
-      let attempts = 0;
 
       const poll = async () => {
-        attempts++;
-        const elapsed = Math.floor((Date.now() - start) / 1000);
-
         try {
-          console.log(
-            `🔍 [Friend Req] Attempt ${attempts} | ${elapsed}s elapsed...`,
-          );
-
-          const statusResponse = await transactionStatus(txId);
-          // Normalize status (handles string vs object {status: "..."})
-          const status = statusResponse?.status || statusResponse;
-
-          console.log(
-            `📡 Current Network Status: %c${status}`,
-            "color: #fbbf24; font-weight: bold;",
-          );
+          const res = await transactionStatus(txId);
+          const status = res?.status || res;
 
           if (status === "Accepted" || status === "Completed") {
-            console.log("✅ Friend Request ACCEPTED on-chain.");
+            setConfirming(false);
             setDone(true);
+
             setTimeout(() => {
               setDone(false);
               setAddress("");
               onClose();
             }, 1500);
+
             return;
           }
 
           if (status === "Rejected" || status === "Failed") {
-            console.error("❌ Friend Request REJECTED by network.");
+            setConfirming(false);
+            setError("Transaction failed");
             return;
           }
 
-          // Continue polling if within timeout
           if (Date.now() - start < timeout) {
             setTimeout(poll, intervalMs);
           } else {
-            console.warn(
-              "⚠️ Polling timed out. Check the Aleo explorer manually.",
-            );
+            setConfirming(false);
+            setError("Confirmation timeout");
           }
-        } catch (err) {
-          // This catch block handles cases where the transaction isn't indexed yet
-          console.log("⏳ Indexing transaction... (waiting for network)", err);
+        } catch {
           if (Date.now() - start < timeout) {
             setTimeout(poll, intervalMs);
+          } else {
+            setConfirming(false);
+            setError("Network error");
           }
         }
       };
 
       poll();
     } catch (err) {
-      console.error("❌ Invite failed:", err);
-    } finally {
       setSubmitting(false);
+      setConfirming(false);
+      setError("Transaction rejected by wallet");
+      console.error(err);
     }
   };
+
   const handlePaste = async () => {
     try {
       const text = await navigator.clipboard.readText();
       setAddress(text.trim());
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setPasted(true);
+      inputRef.current?.focus();
+      setTimeout(() => setPasted(false), 2000);
     } catch (err) {
       console.warn("Paste failed:", err);
     }
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === "Enter" && canSubmit) handleSubmit();
+    if (e.key === "Escape") onClose();
+  };
+
   return (
     <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center px-4 modal-backdrop"
+      className="modal-backdrop fixed inset-0 z-[9999] flex items-center justify-center px-4"
       onClick={(e) => e.target === e.currentTarget && onClose()}>
       {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+      <div className="absolute inset-0 bg-black/75 backdrop-blur-md" />
 
       {/* Panel */}
-      <div className="modal-panel relative w-full max-w-md rounded-3xl overflow-hidden border border-gray-800/60 shadow-2xl shadow-black/60">
-        {/* Top glow — indigo/purple for friends */}
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-indigo-500/60 to-transparent pointer-events-none" />
-        <div className="absolute -top-16 left-1/2 -translate-x-1/2 w-64 h-32 bg-indigo-500/15 blur-3xl pointer-events-none" />
+      <div className="modal-panel relative w-full max-w-[420px] rounded-2xl overflow-hidden border border-gray-800/70 shadow-2xl shadow-black/70">
+        {/* Ambient top glow */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent pointer-events-none" />
+        <div className="absolute -top-20 left-1/2 -translate-x-1/2 w-72 h-36 bg-indigo-600/10 blur-3xl pointer-events-none" />
 
-        <div className="relative z-10 bg-[var(--color-surface)] p-6 space-y-5">
-          {/* ── Header ─────────────────────────────── */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30">
-                <UserPlus size={17} className="text-white" />
+        <div className="relative z-10 bg-[var(--color-surface)]">
+          {/* ── Header ────────────────────────────────────────── */}
+          <div className="flex items-start justify-between px-6 pt-6 pb-5">
+            <div className="flex items-center gap-3.5">
+              {/* Icon badge */}
+              <div className="relative flex-shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                  <UserPlus size={18} className="text-white" />
+                </div>
+                {/* Small dot accent */}
+                <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-indigo-400 border-2 border-[var(--color-surface)]" />
               </div>
               <div>
-                <h2 className="text-base font-bold text-[var(--color-text-primary)] leading-tight">
-                  Invite Friend
+                <h2 className="text-[15px] font-bold text-[var(--color-text-primary)] leading-tight tracking-tight">
+                  Invite a Friend
                 </h2>
-                <p className="text-[10px] text-[var(--color-text-secondary)] mt-0.5">
-                  Send a friend request via wallet address
+                <p className="text-[11px] text-[var(--color-text-secondary)] mt-0.5 leading-relaxed">
+                  Send via Aleo wallet address
                 </p>
               </div>
             </div>
+
             <button
               onClick={onClose}
-              className="group p-2 rounded-xl border border-transparent hover:border-gray-700/60 hover:bg-gray-800/50 active:scale-95 transition-all duration-300">
+              aria-label="Close"
+              className="group mt-0.5 p-1.5 rounded-lg border border-transparent
+                hover:border-gray-700/50 hover:bg-gray-800/50
+                active:scale-95 transition-all duration-200">
               <X
-                size={15}
-                className="text-[var(--color-text-secondary)] group-hover:text-white transition-colors duration-300"
+                size={14}
+                className="text-[var(--color-text-secondary)] group-hover:text-white transition-colors duration-200"
               />
             </button>
           </div>
 
-          {/* ── Address input ──────────────────────── */}
-          <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-[var(--color-text-secondary)] uppercase tracking-widest flex items-center gap-1.5">
-              <Shield size={10} className="text-indigo-400" />
-              Aleo Wallet Address
-            </label>
+          {/* ── Divider ───────────────────────────────────────── */}
+          <div className="h-px bg-gradient-to-r from-transparent via-gray-700/60 to-transparent mx-6" />
 
-            <div
-              className={`
-              relative flex items-center gap-2 px-4 py-3 rounded-xl
-              bg-[var(--color-surface-2)] border transition-all duration-300
-              ${
-                !address.trim()
-                  ? "border-[var(--color-border)] focus-within:border-indigo-500/40 focus-within:ring-2 focus-within:ring-indigo-500/10"
-                  : isValidAddress
-                    ? "border-green-500/40 ring-2 ring-green-500/10"
-                    : "border-rose-500/40 ring-2 ring-rose-500/10"
-              }
-            `}>
-              <input
-                type="text"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="aleo1..."
-                className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]/40 focus:outline-none"
-              />
+          {/* ── Body ──────────────────────────────────────────── */}
+          <div className="px-6 pt-5 pb-6 space-y-4">
+            {/* Address field */}
+            <div className="space-y-2">
+              <label className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-widest text-[var(--color-text-secondary)]">
+                <Shield size={9} className="text-indigo-400" />
+                Recipient Address
+              </label>
 
-              <button
-                type="button"
-                onClick={handlePaste}
-                className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-300 active:scale-90
-                  ${
-                    copied
-                      ? "bg-green-500/20 text-green-400 border border-green-500/30"
-                      : "bg-[var(--color-muted)] text-[var(--color-text-secondary)] hover:text-white hover:bg-indigo-500/20 border border-transparent hover:border-indigo-500/20"
+              <div
+                className={`relative flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-[var(--color-surface-2)] border transition-all duration-250 ${inputClasses}`}>
+                {/* Mono prefix hint */}
+                {!hasInput && (
+                  <span className="font-mono text-xs text-[var(--color-text-secondary)]/30 select-none flex-shrink-0">
+                    aleo1
+                  </span>
+                )}
+
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  onFocus={() => setFocused(true)}
+                  onBlur={() => setFocused(false)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={hasInput ? "" : "..."}
+                  spellCheck={false}
+                  autoComplete="off"
+                  className="flex-1 min-w-0 bg-transparent font-mono text-[11px] leading-relaxed text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]/30 focus:outline-none"
+                />
+
+                {/* Character counter — visible while typing */}
+                {hasInput && (
+                  <span
+                    className={`flex-shrink-0 tabular-nums text-[9px] font-mono transition-colors duration-200 ${
+                      isValidAddress
+                        ? "text-green-400/70"
+                        : address.length > 63
+                          ? "text-rose-400/70"
+                          : "text-[var(--color-text-secondary)]/40"
+                    }`}>
+                    {address.length}/63
+                  </span>
+                )}
+
+                {/* Paste button */}
+                <button
+                  type="button"
+                  onClick={handlePaste}
+                  aria-label="Paste from clipboard"
+                  className={`flex-shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-semibold transition-all duration-200 active:scale-90 ${
+                    pasted
+                      ? "bg-green-500/15 text-green-400 border border-green-500/25"
+                      : "bg-[var(--color-muted)]/60 text-[var(--color-text-secondary)] hover:text-indigo-300 hover:bg-indigo-500/15 border border-transparent hover:border-indigo-500/20"
                   }`}>
-                {copied ? <Check size={12} /> : <Copy size={12} />}
-                {copied ? "Pasted" : "Paste"}
-              </button>
+                  {pasted ? <Check size={10} /> : <Clipboard size={10} />}
+                  {pasted ? "Pasted!" : "Paste"}
+                </button>
+              </div>
+
+              {/* Validation message */}
+              <div
+                className={`flex items-center gap-1.5 pl-0.5 h-4 transition-all duration-200 ${hasInput ? "opacity-100" : "opacity-0 pointer-events-none"}`}>
+                {isValidAddress ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-green-400 font-medium animate-fadeIn">
+                    <Check size={9} />
+                    Valid Aleo address
+                  </span>
+                ) : hasInput ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] text-rose-400 font-medium animate-fadeIn">
+                    <AlertCircle size={9} />
+                    {!address.startsWith("aleo1")
+                      ? "Must start with 'aleo1'"
+                      : `${63 - address.length > 0 ? 63 - address.length + " chars short" : Math.abs(63 - address.length) + " chars too long"}`}
+                  </span>
+                ) : null}
+              </div>
             </div>
 
-            {/* Validation feedback */}
-            {address.trim().length > 0 && (
-              <div className="flex items-center gap-1.5 pl-1 animate-fadeIn">
-                {isValidAddress ? (
+            {/* Privacy banner */}
+            <div className="flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-indigo-500/6 border border-indigo-500/12">
+              <Shield size={12} className="text-indigo-400/80 flex-shrink-0" />
+              <p className="text-[10px] text-indigo-400/75 leading-relaxed">
+                Requests are{" "}
+                <span className="text-indigo-300/90 font-medium">
+                  zero-knowledge verified
+                </span>{" "}
+                and fully encrypted on-chain
+              </p>
+            </div>
+
+            {error && (
+              <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-rose-500/10 border border-rose-500/20">
+                <AlertCircle size={12} className="text-rose-400" />
+                <span className="text-[11px] text-rose-400 font-medium">
+                  {error}
+                </span>
+              </div>
+            )}
+
+            {/* ── Actions ───────────────────────────────────── */}
+            <div className="flex gap-2.5 pt-0.5">
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold
+                  border border-[var(--color-border)] text-[var(--color-text-secondary)]
+                  hover:border-gray-600/70 hover:text-[var(--color-text-primary)] hover:bg-gray-800/35
+                  active:scale-[0.98] transition-all duration-200">
+                Cancel
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                className={`group relative flex-[1.4] flex items-center justify-center gap-2
+                  py-2.5 rounded-xl text-[13px] font-semibold text-white overflow-hidden
+                  transition-all duration-300 active:scale-[0.98]
+                  ${
+                    done
+                      ? "bg-gradient-to-r from-green-600 to-emerald-500 shadow-md shadow-green-500/25"
+                      : canSubmit
+                        ? "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/30 hover:shadow-indigo-500/40"
+                        : "bg-gray-800/80 text-gray-500 cursor-not-allowed"
+                  }`}>
+                {/* Shimmer on hover */}
+                {canSubmit && !done && (
+                  <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/8 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
+                )}
+
+                {submitting || confirming ? (
                   <>
-                    <Check size={10} className="text-green-400" />
-                    <p className="text-[10px] text-green-400 font-medium">
-                      Valid Aleo address
-                    </p>
+                    <Loader2 size={14} className="animate-spin" />
+                    <span>
+                      {submitting ? "Broadcasting…" : "Confirming on-chain…"}
+                    </span>
+                  </>
+                ) : done ? (
+                  <>
+                    <Check size={14} strokeWidth={2.5} />
+                    <span>Confirmed!</span>
                   </>
                 ) : (
                   <>
-                    <AlertCircle size={10} className="text-rose-400" />
-                    <p className="text-[10px] text-rose-400 font-medium">
-                      {address.startsWith("aleo1")
-                        ? `Address too ${address.length < 63 ? "short" : "long"} (${address.length}/63)`
-                        : "Must start with 'aleo1'"}
-                    </p>
+                    <span>Send Invite</span>
+                    <ArrowRight
+                      size={13}
+                      className="transition-transform duration-200 group-hover:translate-x-0.5"
+                    />
                   </>
                 )}
-              </div>
-            )}
-          </div>
-
-          {/* Privacy note */}
-          <div className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500/8 border border-indigo-500/15">
-            <Shield size={11} className="text-indigo-400 flex-shrink-0" />
-            <p className="text-[10px] text-indigo-400/80 leading-relaxed">
-              Friend requests are zero-knowledge verified and fully encrypted
-            </p>
-          </div>
-
-          {/* ── Actions ────────────────────────────── */}
-          <div className="flex gap-3 pt-1">
-            <button
-              onClick={onClose}
-              className="flex-1 py-3 rounded-2xl text-sm font-semibold
-                border border-[var(--color-border)] text-[var(--color-text-secondary)]
-                hover:border-gray-600 hover:text-[var(--color-text-primary)] hover:bg-gray-800/40
-                active:scale-[0.98] transition-all duration-300">
-              Cancel
-            </button>
-
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit || submitting}
-              className={`
-                group relative flex-1 flex items-center justify-center gap-2
-                py-3 rounded-2xl text-sm font-semibold text-white overflow-hidden
-                transition-all duration-300 active:scale-[0.98]
-                ${
-                  !canSubmit
-                    ? "bg-gray-800 text-gray-500 cursor-not-allowed"
-                    : done
-                      ? "bg-gradient-to-r from-green-600 to-emerald-600 shadow-lg shadow-green-500/30"
-                      : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-lg shadow-indigo-500/30 hover:shadow-indigo-500/50"
-                }
-              `}>
-              {/* Shimmer */}
-              {canSubmit && !done && (
-                <span className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none" />
-              )}
-
-              {submitting ? (
-                <>
-                  <svg
-                    className="animate-spin h-4 w-4"
-                    fill="none"
-                    viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
-                    />
-                  </svg>
-                  Sending...
-                </>
-              ) : done ? (
-                <>
-                  <svg
-                    className="w-4 h-4"
-                    fill="currentColor"
-                    viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                  Request Sent!
-                </>
-              ) : (
-                <>
-                  <UserPlus
-                    size={15}
-                    className="transition-transform duration-300 group-hover:scale-110"
-                  />
-                  <span>Send Invite</span>
-                </>
-              )}
-            </button>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -378,7 +368,7 @@ export default function InviteFriendModal({ open, onClose }) {
         @keyframes panelIn {
           from {
             opacity: 0;
-            transform: scale(0.94) translateY(16px);
+            transform: scale(0.96) translateY(12px);
           }
           to {
             opacity: 1;
@@ -388,7 +378,7 @@ export default function InviteFriendModal({ open, onClose }) {
         @keyframes fadeIn {
           from {
             opacity: 0;
-            transform: translateY(-4px);
+            transform: translateY(-3px);
           }
           to {
             opacity: 1;
@@ -396,13 +386,13 @@ export default function InviteFriendModal({ open, onClose }) {
           }
         }
         .modal-backdrop {
-          animation: backdropIn 0.2s ease-out both;
+          animation: backdropIn 0.18s ease-out both;
         }
         .modal-panel {
-          animation: panelIn 0.3s cubic-bezier(0.34, 1.26, 0.64, 1) both;
+          animation: panelIn 0.28s cubic-bezier(0.34, 1.2, 0.64, 1) both;
         }
         .animate-fadeIn {
-          animation: fadeIn 0.25s ease-out both;
+          animation: fadeIn 0.2s ease-out both;
         }
       `}</style>
     </div>

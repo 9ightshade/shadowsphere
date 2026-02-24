@@ -7,7 +7,7 @@ import FriendCard from "./components/FriendCard";
 import RequestCard from "./components/RequestCard";
 import InviteFriendModal from "./components/InviteFriendModal";
 import { Users, Shield, UserPlus } from "lucide-react";
-import {  ALEO_PROGRAM_NAME } from "../../config/config";
+import { ALEO_PROGRAM_NAME } from "../../config/config";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { fieldToString, parseAleoStruct } from "../../lib/aleo/index";
 
@@ -28,64 +28,70 @@ export default function FriendsPage() {
   const PROGRAM_ID = ALEO_PROGRAM_NAME;
 
   useEffect(() => {
-    if (!connected || !address) return;
+    if (!connected || !address) {
+      setIncoming([]);
+      setOutgoing([]);
+      return;
+    }
 
     const fetchFriendRequests = async () => {
       try {
         const records = await requestRecords(PROGRAM_ID, false);
 
-        // console.log("all records:", records);
-
-        if (!records || records.length === 0) return;
+        if (!records) {
+          setIncoming([]);
+          setOutgoing([]);
+          return;
+        }
 
         const incomingList = [];
         const outgoingList = [];
-        const friendsList = [];
 
-        const normalize = (a) => a?.replace(".private", "");
+        const normalize = (a) => a?.replace(".private", "").trim();
+
+        const me = normalize(address);
+
         for (const record of records) {
           if (record.functionName !== "add_friend") continue;
-          if (record.spent === true) continue;
-
-          // console.log("owner", fieldToString(record.owner));
+          if (record.spent) continue;
 
           const decrypted = await decrypt(record.recordCiphertext);
           if (!decrypted) continue;
 
-          const decryptedStruct = parseAleoStruct(decrypted);
+          const data = parseAleoStruct(decrypted);
 
-          // console.log("decrypted struct:", decryptedStruct);
+          const senderRaw = data.from;
+          const receiverRaw = data.to;
 
-          const owner = decryptedStruct.owner;
-          const friend = decryptedStruct.to;
+          if (!senderRaw || !receiverRaw) continue;
 
-          if (!owner || !friend) continue;
+          const sender = normalize(senderRaw);
+          const receiver = normalize(receiverRaw);
+
+          // Only care about records involving me
+          if (sender !== me && receiver !== me) continue;
+
+          const isOutgoing = sender === me;
+          const otherPartyRaw = isOutgoing ? receiverRaw : senderRaw;
 
           const baseObject = {
             id: record.commitment,
-            from: owner,
-            to: friend,
-            username:
-              normalize(owner) === normalize(address)
-                ? friend.slice(0, 10)
-                : owner.slice(0, 10),
-            address: normalize(owner) === normalize(address) ? friend : owner,
+            from: senderRaw,
+            to: receiverRaw,
+            username: normalize(otherPartyRaw)?.slice(0, 10),
+            address: otherPartyRaw,
             blockHeight: record.blockHeight,
             timestamp: record.blockTimestamp,
             transactionId: record.transactionId?.trim(),
           };
 
-          // console.log("base", baseObject);
-
-          // 🔥 CLASSIFICATION
-          if (normalize(owner) === normalize(address)) {
+          if (isOutgoing) {
             outgoingList.push(baseObject);
-          } else if (normalize(friend) === normalize(address)) {
+          } else {
             incomingList.push(baseObject);
           }
         }
 
-        // 🔒 Deduplicate by commitment
         const dedupe = (arr) =>
           Array.from(new Map(arr.map((r) => [r.id, r])).values());
 
@@ -93,6 +99,8 @@ export default function FriendsPage() {
         setOutgoing(dedupe(outgoingList));
       } catch (err) {
         console.error("Friend record sync failed:", err);
+        setIncoming([]);
+        setOutgoing([]);
       }
     };
 
