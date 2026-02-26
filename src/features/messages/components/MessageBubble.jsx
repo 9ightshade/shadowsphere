@@ -1,17 +1,23 @@
 // ─── MessageBubble.jsx ────────────────────────────────────────────────────────
 import { Check, CheckCheck, Lock } from "lucide-react";
-
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 const STATUS_ICONS = {
   sent: <Check size={10} className="text-white/40" />,
   delivered: <CheckCheck size={10} className="text-white/50" />,
   read: <CheckCheck size={10} className="text-indigo-300" />,
 };
 
-export default function MessageBubble({ message, isOwn }) {
+export default function MessageBubble({ message }) {
   const time = new Date(message.timestamp).toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
   });
+
+  const { address } = useWallet();
+
+  const isOwn = message?.sender === address;
+
+  console.log("message", message);
 
   return (
     <div

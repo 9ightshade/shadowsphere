@@ -4,13 +4,12 @@ import { Shield, Lock, MoreVertical } from "lucide-react";
 import { useMessageStore } from "../../../store/useMessageStore";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
-import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+
 
 export default function ChatWindow() {
   const { conversations, activeConversationId } = useMessageStore();
   const conversation = conversations.find((c) => c.id === activeConversationId);
   const bottomRef = useRef(null);
-  const { address } = useWallet();
   console.log("conversations", conversations);
   console.log("conversation", conversation);
 
@@ -104,11 +103,12 @@ export default function ChatWindow() {
       {/* ── Messages ────────────────────────────────── */}
       <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 messages-scroll">
         {conversation.messages.map((msg, i) => (
+          
           <div
             key={msg.id}
             className="bubble-wrapper"
             style={{ animationDelay: `${i * 40}ms` }}>
-            <MessageBubble message={msg} isOwn={msg.senderId === address} />
+            <MessageBubble message={msg} />
           </div>
         ))}
         <div ref={bottomRef} />

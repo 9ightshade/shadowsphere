@@ -21,105 +21,88 @@ export default function MessageInput({ conversationId }) {
 
   const canSend = text.trim().length > 0;
 
-  const handleSubmit = async () => {
-    if (!canSend || sending) return;
+const handleSubmit = async () => {
+  if (!canSend || sending) return;
 
-    setSending(true);
+  setSending(true);
+  const trimmed = text.trim();
+  const localId = `pending-${Date.now()}`;
 
-    const trimmed = text.trim();
-    const localId = `pending-${Date.now()}`;
+  // 1️⃣ Add pending message
+  addMessage(conversationId, {
+    id: localId,
+    senderId: address,
+    receiverId: conversationId,
+    content: trimmed,
+    timestamp: new Date().toISOString(),
+    status: "sent",
+  });
 
-    // 1️⃣ Add pending message to store for optimistic UI
-    addMessage(conversationId, {
-      id: localId,
-      senderId: address,
-      receiverId: conversationId,
-      content: trimmed,
-      timestamp: new Date().toISOString(),
-      status: "sent",
-    });
+  setText("");
+  inputRef.current?.focus();
 
-    setText("");
-    inputRef.current?.focus();
+  try {
+    // 2️⃣ Prepare on-chain inputs
+    const messageField = stringToField(trimmed);
+    const timestampU32 = getTimestampU32();
 
-    try {
-      // 2️⃣ Prepare on-chain inputs
-      const messageField = stringToField(trimmed);
-      const timestampU32 = getTimestampU32();
+    const txPayload = {
+      program: ALEO_PROGRAM_NAME,
+      function: "send_message",
+      inputs: [conversationId, messageField, timestampU32],
+      fee: ALEO_FEE,
+      privateFee: false,
+    };
 
-      const txPayload = {
-        program: ALEO_PROGRAM_NAME,
-        function: "send_message",
-        inputs: [conversationId, messageField, timestampU32],
-        fee: ALEO_FEE,
-        privateFee: false,
-      };
+    const result = await executeTransaction(txPayload);
+    const txId = result?.transactionId;
+    if (!txId) throw new Error("Transaction ID missing");
 
-      const result = await executeTransaction(txPayload);
-      const txId = result?.transactionId;
-      if (!txId) throw new Error("Transaction ID missing");
+    // 3️⃣ Poll for transaction acceptance
+    const start = Date.now();
+    const timeout = 120_000;
+    const intervalMs = 3000;
 
-      // 3️⃣ Poll for transaction acceptance
-      const start = Date.now();
-      const timeout = 120_000; // 2 minutes
-      const intervalMs = 3000;
+    const poll = async () => {
+      try {
+        const statusResponse = await transactionStatus(txId);
+        const status = statusResponse?.status || statusResponse;
 
-      const poll = async () => {
-        try {
-          const statusResponse = await transactionStatus(txId);
-          const status = statusResponse?.status || statusResponse;
+      if (status === "Accepted" || status === "Completed") {
+        const { updateMessage } = useMessageStore.getState();
 
-          if (status === "Accepted" || status === "Completed") {
-            // ✅ Update pending message in store with confirmed txId
-            const state = useMessageStore.getState();
+        // ✅ Cleanly update the pending message to the real transaction ID
+        updateMessage(conversationId, localId, {
+          id: txId,
+          commitment: txId,
+          status: "delivered",
+        });
 
-            state.conversations = state.conversations.map((conv) => {
-              if (conv.id !== conversationId) return conv;
+        setSending(false);
+        return;
+      }
 
-              const updatedMessages = conv.messages.map((m) =>
-                m.id === localId
-                  ? { ...m, id: txId, commitment: txId, status: "delivered" }
-                  : m,
-              );
-
-              return {
-                ...conv,
-                messages: updatedMessages,
-                lastMessage: updatedMessages[updatedMessages.length - 1],
-              };
-            });
-
-            setSending(false);
-            return;
-          }
-
-          if (status === "Rejected" || status === "Failed") {
-            console.error("❌ Message failed on blockchain.");
-            setSending(false);
-            return;
-          }
-
-          if (Date.now() - start < timeout) {
-            setTimeout(poll, intervalMs);
-          } else {
-            console.warn("⚠️ Polling timeout");
-            setSending(false);
-          }
-        } catch (err) {
-          console.log("err", err);
-
-          if (Date.now() - start < timeout) setTimeout(poll, intervalMs);
-          else setSending(false);
+        if (status === "Rejected" || status === "Failed") {
+          console.error("❌ Message failed on blockchain.");
+          setSending(false);
+          return;
         }
-      };
 
-      poll();
-    } catch (err) {
-      console.error("❌ Send Message Failed:", err);
-      setSending(false);
-    }
-  };
+        if (Date.now() - start < timeout) setTimeout(poll, intervalMs);
+        else setSending(false);
+      } catch (err) {
+        console.log("err", err);
+        if (Date.now() - start < timeout) setTimeout(poll, intervalMs);
+        else setSending(false);
+      }
+    };
 
+    poll();
+  } catch (err) {
+    console.error("❌ Send Message Failed:", err);
+    setSending(false);
+  }
+};
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
