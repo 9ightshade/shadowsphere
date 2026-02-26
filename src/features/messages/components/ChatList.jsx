@@ -2,14 +2,130 @@
 import { MessageSquare, Search, Shield } from "lucide-react";
 import { useMessageStore } from "../../../store/useMessageStore";
 import ChatItem from "./ChatItem";
-import { useState } from "react";
-
+import { useState, useEffect } from "react";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+import { ALEO_PROGRAM_NAME } from "../../../config/config";
+import { fieldToString, parseAleoStruct } from "../../../lib/aleo";
 export default function ChatList() {
   const { conversations } = useMessageStore();
   const [query, setQuery] = useState("");
+  const { requestRecords, decrypt, address } = useWallet();
+  function normalize(value) {
+    if (!value) return value;
 
+    return value
+      .toString()
+      .replace(".private", "")
+      .replace(".public", "")
+      .replace("field", "")
+      .replace("u32", "")
+      .replace("u8", "")
+      .trim();
+  }
+
+  useEffect(() => {
+    let interval;
+
+    const fetchRecords = async () => {
+      const records = await requestRecords(ALEO_PROGRAM_NAME, false);
+
+      processRecords(records);
+    };
+
+    const processRecords = async (records) => {
+      for (const record of records) {
+        if (record.functionName !== "send_message" || record.spent) {
+          continue;
+        }
+
+        // console.log("send message", record);
+
+        try {
+          // ✅ Decrypt using recordCiphertext
+          const decrypted = parseAleoStruct(
+            await decrypt(record.recordCiphertext),
+          );
+          // console.log("decrypted", decrypted);
+
+          const message = {
+            id: normalize(decrypted.message_id),
+            sender: normalize(decrypted.from),
+            recipient: normalize(decrypted.to),
+            // content: decrypted.content_hash,
+            content: fieldToString(
+              decrypted.content_hash.replace(/\.private|\.public/g, ""),
+            ),
+            timestamp: Number(normalize(decrypted.timestamp)),
+            read: normalize(decrypted.read) === "true",
+            commitment: record.commitment,
+          };
+
+          console.log("message", message);
+
+          const conversationId =
+            normalize(decrypted.from) === address
+              ? normalize(decrypted.to)
+              : normalize(decrypted.from);
+
+          console.log("conversation id", conversationId);
+
+          addOrAppendConversation(conversationId, message);
+        } catch (err) {
+          console.log(err);
+
+          // Ignore records not decryptable by this wallet
+          continue;
+        }
+      }
+    };
+    const addOrAppendConversation = (convId, message) => {
+      const { conversations, addConversation, addMessage } =
+        useMessageStore.getState();
+
+      const existing = conversations.find((c) => c.id === convId);
+
+      // Prevent duplicate messages from polling
+      if (existing?.messages.some((m) => m.id === message.id)) {
+        return;
+      }
+
+      const isSender = message.sender === address;
+
+      const otherParty = isSender ? message.recipient : message.sender;
+
+      if (!otherParty) return;
+
+      const formattedMessage = {
+        ...message,
+        content: message.content, // until you resolve actual message content
+      };
+
+      if (!existing) {
+        addConversation({
+          id: convId,
+          participants: [
+            {
+              alias: otherParty.slice(0, 12), // temporary alias
+            },
+          ],
+          messages: [formattedMessage],
+          lastMessage: formattedMessage,
+        });
+      } else {
+        addMessage(convId, formattedMessage);
+      }
+    };
+
+    fetchRecords();
+    interval = setInterval(fetchRecords, 8000);
+
+    return () => clearInterval(interval);
+  }, []);
   const filtered = conversations.filter((c) =>
-    c.alias?.toLowerCase().includes(query.toLowerCase()),
+    c.participants
+      ?.map((p) => p.alias.toLowerCase())
+      .join(" ")
+      .includes(query.toLowerCase()),
   );
 
   return (
