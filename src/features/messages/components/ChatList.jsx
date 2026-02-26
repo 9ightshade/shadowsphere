@@ -60,14 +60,14 @@ export default function ChatList() {
             commitment: record.commitment,
           };
 
-          console.log("message", message);
+          // console.log("message", message);
 
           const conversationId =
             normalize(decrypted.from) === address
               ? normalize(decrypted.to)
               : normalize(decrypted.from);
 
-          console.log("conversation id", conversationId);
+          // console.log("conversation id", conversationId);
 
           addOrAppendConversation(conversationId, message);
         } catch (err) {

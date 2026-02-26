@@ -2,42 +2,128 @@
 import { useState, useRef } from "react";
 import { Send, Lock, Smile } from "lucide-react";
 import { useMessageStore } from "../../../store/useMessageStore";
-import { v4 as uuid } from "uuid";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
+import {
+  ALEO_PROGRAM_NAME,
+  ALEO_FEE,
+  getTimestampU32,
+} from "../../../config/config";
+import { stringToField } from "../../../lib/aleo";
 
 export default function MessageInput({ conversationId }) {
   const [text, setText] = useState("");
   const [focused, setFocused] = useState(false);
   const [sending, setSending] = useState(false);
   const inputRef = useRef(null);
-  const { addMessage } = useMessageStore();
+
+  const { addMessage } = useMessageStore.getState();
+  const { executeTransaction, transactionStatus, address } = useWallet();
 
   const canSend = text.trim().length > 0;
 
-  const sendMessage = async () => {
+  const handleSubmit = async () => {
     if (!canSend || sending) return;
 
     setSending(true);
-    // Tiny delay for visual feedback
-    await new Promise((r) => setTimeout(r, 120));
 
+    const trimmed = text.trim();
+    const localId = `pending-${Date.now()}`;
+
+    // 1️⃣ Add pending message to store for optimistic UI
     addMessage(conversationId, {
-      id: uuid(),
-      senderId: "me",
+      id: localId,
+      senderId: address,
       receiverId: conversationId,
-      content: text.trim(),
+      content: trimmed,
       timestamp: new Date().toISOString(),
       status: "sent",
     });
 
     setText("");
-    setSending(false);
     inputRef.current?.focus();
+
+    try {
+      // 2️⃣ Prepare on-chain inputs
+      const messageField = stringToField(trimmed);
+      const timestampU32 = getTimestampU32();
+
+      const txPayload = {
+        program: ALEO_PROGRAM_NAME,
+        function: "send_message",
+        inputs: [conversationId, messageField, timestampU32],
+        fee: ALEO_FEE,
+        privateFee: false,
+      };
+
+      const result = await executeTransaction(txPayload);
+      const txId = result?.transactionId;
+      if (!txId) throw new Error("Transaction ID missing");
+
+      // 3️⃣ Poll for transaction acceptance
+      const start = Date.now();
+      const timeout = 120_000; // 2 minutes
+      const intervalMs = 3000;
+
+      const poll = async () => {
+        try {
+          const statusResponse = await transactionStatus(txId);
+          const status = statusResponse?.status || statusResponse;
+
+          if (status === "Accepted" || status === "Completed") {
+            // ✅ Update pending message in store with confirmed txId
+            const state = useMessageStore.getState();
+
+            state.conversations = state.conversations.map((conv) => {
+              if (conv.id !== conversationId) return conv;
+
+              const updatedMessages = conv.messages.map((m) =>
+                m.id === localId
+                  ? { ...m, id: txId, commitment: txId, status: "delivered" }
+                  : m,
+              );
+
+              return {
+                ...conv,
+                messages: updatedMessages,
+                lastMessage: updatedMessages[updatedMessages.length - 1],
+              };
+            });
+
+            setSending(false);
+            return;
+          }
+
+          if (status === "Rejected" || status === "Failed") {
+            console.error("❌ Message failed on blockchain.");
+            setSending(false);
+            return;
+          }
+
+          if (Date.now() - start < timeout) {
+            setTimeout(poll, intervalMs);
+          } else {
+            console.warn("⚠️ Polling timeout");
+            setSending(false);
+          }
+        } catch (err) {
+          console.log("err", err);
+
+          if (Date.now() - start < timeout) setTimeout(poll, intervalMs);
+          else setSending(false);
+        }
+      };
+
+      poll();
+    } catch (err) {
+      console.error("❌ Send Message Failed:", err);
+      setSending(false);
+    }
   };
 
   const handleKeyDown = (e) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      sendMessage();
+      handleSubmit();
     }
   };
 
@@ -81,7 +167,7 @@ export default function MessageInput({ conversationId }) {
       {/* Send button */}
       <button
         type="button"
-        onClick={sendMessage}
+        onClick={handleSubmit}
         disabled={!canSend || sending}
         className={`
           group flex-shrink-0 flex items-center justify-center

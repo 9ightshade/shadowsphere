@@ -4,11 +4,15 @@ import { Shield, Lock, MoreVertical } from "lucide-react";
 import { useMessageStore } from "../../../store/useMessageStore";
 import MessageBubble from "./MessageBubble";
 import MessageInput from "./MessageInput";
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 export default function ChatWindow() {
   const { conversations, activeConversationId } = useMessageStore();
   const conversation = conversations.find((c) => c.id === activeConversationId);
   const bottomRef = useRef(null);
+  const { address } = useWallet();
+  console.log("conversations", conversations);
+  console.log("conversation", conversation);
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -104,7 +108,7 @@ export default function ChatWindow() {
             key={msg.id}
             className="bubble-wrapper"
             style={{ animationDelay: `${i * 40}ms` }}>
-            <MessageBubble message={msg} />
+            <MessageBubble message={msg} isOwn={msg.senderId === address} />
           </div>
         ))}
         <div ref={bottomRef} />

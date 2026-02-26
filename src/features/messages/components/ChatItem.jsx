@@ -5,7 +5,7 @@ export default function ChatItem({ conversation }) {
   const { setActiveConversation, activeConversationId } = useMessageStore();
   const isActive = conversation.id === activeConversationId;
 
-  console.log("conversations", conversation);
+  // console.log("conversations", conversation);
 
   return (
     <div

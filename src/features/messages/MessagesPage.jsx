@@ -30,7 +30,7 @@ export default function MessagesPage() {
         {/* FAB — New Message */}
         <button
           onClick={() => setNewMessageOpen(true)}
-          className="group fixed bottom-8 cursor-pointer right-8 z-50
+          className="group fixed bottom-1/5 cursor-pointer right-8 z-50
             w-14 h-14 rounded-2xl
             bg-gradient-to-br from-indigo-600 to-purple-600
             hover:from-indigo-500 hover:to-purple-500
