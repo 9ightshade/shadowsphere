@@ -28,11 +28,11 @@ export default function MessagesPage() {
         </div>
 
         {/* FAB — New Message */}
-        {/* <button
+        <button
           onClick={() => setNewMessageOpen(true)}
           className="group fixed bottom-1/5 cursor-pointer right-8 z-50
             w-14 h-14 rounded-2xl
-            bg-gradient-to-br from-indigo-600 to-purple-600
+            bg-gradient-to-br from-indigo-800 to-purple-800
             hover:from-indigo-500 hover:to-purple-500
             active:scale-95 hover:scale-105
             shadow-xl shadow-indigo-500/40 hover:shadow-indigo-500/60
@@ -46,7 +46,7 @@ export default function MessagesPage() {
             size={22}
             className="text-white relative z-10 transition-transform duration-300 group-hover:scale-110"
           />
-        </button> */}
+        </button>
 
         <style jsx>{`
           @keyframes fadeIn {
