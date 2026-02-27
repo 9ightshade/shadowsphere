@@ -17,7 +17,7 @@ export default function MessageBubble({ message }) {
 
   const isOwn = message?.sender === address;
 
-  console.log("message", message);
+  // console.log("message", message);
 
   return (
     <div

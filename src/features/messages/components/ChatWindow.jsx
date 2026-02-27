@@ -81,7 +81,7 @@ export default function ChatWindow() {
 
           <div>
             <p className="text-sm font-semibold text-[var(--color-text-primary)] leading-tight">
-              {conversation.alias ?? "Anonymous"}
+              {conversation.id ?? "Anonymous"}
             </p>
             <div className="flex items-center gap-1 mt-0.5">
               <Lock size={9} className="text-green-400" />
