@@ -31,8 +31,8 @@ const handleSubmit = async () => {
   // 1️⃣ Add pending message
   addMessage(conversationId, {
     id: localId,
-    senderId: address,
-    receiverId: conversationId,
+    sender: address,
+    recipient: conversationId,
     content: trimmed,
     timestamp: new Date().toISOString(),
     status: "sent",

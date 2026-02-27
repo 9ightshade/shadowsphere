@@ -175,7 +175,7 @@ export default function NewMessageModal({ open, onClose }) {
               </div>
               <div>
                 <h2 className="text-base font-bold text-[var(--color-text-primary)] leading-tight">
-                  New Message
+                  Instant Message
                 </h2>
                 <p className="text-[10px] text-[var(--color-text-secondary)] mt-0.5">
                   Start an encrypted conversation
@@ -215,6 +215,7 @@ export default function NewMessageModal({ open, onClose }) {
                 type="text"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
+                maxLength={30}
                 placeholder="aleo1..."
                 className="flex-1 bg-transparent font-mono text-xs text-[var(--color-text-primary)] placeholder-[var(--color-text-secondary)]/40 focus:outline-none"
               />

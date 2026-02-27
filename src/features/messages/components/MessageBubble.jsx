@@ -25,7 +25,7 @@ export default function MessageBubble({ message }) {
       {/* Avatar — only for incoming */}
       {!isOwn && (
         <div className="w-7 h-7 flex-shrink-0 rounded-lg bg-gradient-to-br from-indigo-600/30 to-purple-600/30 border border-indigo-500/20 flex items-center justify-center text-xs font-bold text-indigo-300 mb-0.5">
-          {message.senderId?.[0]?.toUpperCase() ?? "?"}
+          {message.sender?.[0]?.toUpperCase() ?? "?"}
         </div>
       )}
 
