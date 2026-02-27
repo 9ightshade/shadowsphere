@@ -69,14 +69,14 @@ const handleSubmit = async () => {
         const status = statusResponse?.status || statusResponse;
 
       if (status === "Accepted" || status === "Completed") {
-        const { updateMessage } = useMessageStore.getState();
+        // const { updateMessage } = useMessageStore.getState();
 
         // ✅ Cleanly update the pending message to the real transaction ID
-        updateMessage(conversationId, localId, {
-          id: txId,
-          commitment: txId,
-          status: "delivered",
-        });
+        // updateMessage(conversationId, localId, {
+        //   id: localId,
+        //   commitment: txId,
+        //   status: "delivered",
+        // });
 
         setSending(false);
         return;

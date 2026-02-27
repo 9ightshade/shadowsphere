@@ -51,7 +51,6 @@ export default function ChatList() {
             id: normalize(decrypted.message_id),
             sender: normalize(decrypted.from),
             recipient: normalize(decrypted.to),
-            // content: decrypted.content_hash,
             content: fieldToString(
               decrypted.content_hash.replace(/\.private|\.public/g, ""),
             ),
@@ -67,8 +66,6 @@ export default function ChatList() {
               ? normalize(decrypted.to)
               : normalize(decrypted.from);
 
-          // console.log("conversation id", conversationId);
-
           addOrAppendConversation(conversationId, message);
         } catch (err) {
           console.log(err);
@@ -78,36 +75,64 @@ export default function ChatList() {
         }
       }
     };
+
     const addOrAppendConversation = (convId, message) => {
       const { conversations, addConversation, addMessage } =
         useMessageStore.getState();
-
       const existing = conversations.find((c) => c.id === convId);
 
-      // Prevent duplicate messages from polling
-      if (existing?.messages.some((m) => m.id === message.id)) {
-        return;
+      if (existing) {
+        // 🛡️ ENHANCED DUPLICATE CHECK
+        const isDuplicate = existing.messages.some((m) => {
+          // 1. Check if ID matches exactly (blockchain vs blockchain)
+          if (m.id === message.id) return true;
+
+          // 2. Check if this blockchain message is a match for a "pending" local message
+          // We check if content is identical AND if the timestamps are within 2 minutes
+          const timeDiff = Math.abs(
+            new Date(m.timestamp).getTime() - message.timestamp * 1000,
+          );
+          const isPendingMatch =
+            m.id.toString().startsWith("pending") &&
+            m.content === message.content &&
+            timeDiff < 120000;
+
+          return isPendingMatch;
+        });
+
+        if (isDuplicate) {
+          // OPTIONAL: Update the pending message ID to the real one so it's "confirmed"
+          // This helps the UI transition from 'sending' to 'delivered'
+          const pendingMsg = existing.messages.find(
+            (m) =>
+              m.id.toString().startsWith("pending") &&
+              m.content === message.content,
+          );
+          if (pendingMsg) {
+            useMessageStore.getState().updateMessage(convId, pendingMsg.id, {
+              id: message.id,
+              status: "delivered",
+              timestamp: message.timestamp * 1000, // sync to blockchain time
+            });
+          }
+          return;
+        }
       }
 
+      // ... rest of your existing logic (isSender, formattedMessage, etc.)
       const isSender = message.sender === address;
-
       const otherParty = isSender ? message.recipient : message.sender;
-
       if (!otherParty) return;
 
       const formattedMessage = {
         ...message,
-        content: message.content, // until you resolve actual message content
+        timestamp: message.timestamp * 1000, // Aleo uses seconds, JS needs ms
       };
 
       if (!existing) {
         addConversation({
           id: convId,
-          participants: [
-            {
-              alias: otherParty.slice(0, 12), // temporary alias
-            },
-          ],
+          participants: [{ alias: otherParty.slice(0, 12) }],
           messages: [formattedMessage],
           lastMessage: formattedMessage,
         });
@@ -115,7 +140,6 @@ export default function ChatList() {
         addMessage(convId, formattedMessage);
       }
     };
-
     fetchRecords();
     interval = setInterval(fetchRecords, 8000);
 

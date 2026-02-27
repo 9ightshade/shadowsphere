@@ -28,7 +28,7 @@ export default function MessagesPage() {
         </div>
 
         {/* FAB — New Message */}
-        <button
+        {/* <button
           onClick={() => setNewMessageOpen(true)}
           className="group fixed bottom-1/5 cursor-pointer right-8 z-50
             w-14 h-14 rounded-2xl
@@ -40,13 +40,13 @@ export default function MessagesPage() {
             flex items-center justify-center
             fab-btn"
           aria-label="New message">
-          {/* Ping ring */}
+          
           <span className="absolute inset-0 rounded-2xl bg-indigo-500/30 animate-ping opacity-60 pointer-events-none" />
           <MessageSquarePlus
             size={22}
             className="text-white relative z-10 transition-transform duration-300 group-hover:scale-110"
           />
-        </button>
+        </button> */}
 
         <style jsx>{`
           @keyframes fadeIn {
