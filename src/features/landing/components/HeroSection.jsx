@@ -2,7 +2,7 @@ import { WalletMultiButton } from "@provablehq/aleo-wallet-adaptor-react-ui";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ALEO_PROGRAM_NAME } from "../../../config/config";
+import { ALEO_PROGRAM_NAME, ALEO_FEE } from "../../../config/config";
 
 export default function HeroSection() {
   const {
@@ -73,7 +73,7 @@ export default function HeroSection() {
           program: ALEO_PROGRAM_NAME,
           function: functionName,
           inputs: [],
-          fee: 100000,
+          fee: ALEO_FEE,
           privateFee: false,
         });
       } else {
@@ -113,7 +113,7 @@ export default function HeroSection() {
           program: ALEO_PROGRAM_NAME,
           function: "verify_login",
           inputs: [identityHash], // Pass just the field, not the whole record
-          fee: 100000, // Ensure fee is sufficient for private execution
+          fee: ALEO_FEE, // Ensure fee is sufficient for private execution
           privateFee: false, // Set to true only if using private credits
         });
       }
