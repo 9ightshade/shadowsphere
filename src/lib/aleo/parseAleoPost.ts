@@ -40,9 +40,11 @@ export function parseAleoPost(
     : null;
 
   const categoryMap: Record<number, string> = {
-    1: "Whistleblowing",
-    2: "Finance",
-    3: "Private Communities",
+    1: "Finance",
+    2: "Tech",
+    3: "Sports",
+    4: "science",
+    5: "Arts",
   };
 
   const categoryRaw = parsed.category

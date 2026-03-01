@@ -1,12 +1,11 @@
+// filepath: src/models/friend.ts
 export interface FriendUser {
   id: string;
   alias: string;
-  avatar?: string;
-}
-
-export interface FriendRequest {
-  id: string;
-  from: FriendUser;
-  to: FriendUser;
-  status: "pending" | "accepted" | "rejected";
+  username: string;
+  address: string;
+  blockHeight: number;
+  isOnline: boolean;
+  timestamp: number;
+  transactionId: string;
 }

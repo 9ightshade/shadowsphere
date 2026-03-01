@@ -27,8 +27,8 @@ export default function ChatList() {
     let interval;
 
     const fetchRecords = async () => {
-      const records = await requestRecords(ALEO_PROGRAM_NAME, false);
-
+      const records = await requestRecords(ALEO_PROGRAM_NAME, true);
+      console.log("fetched records", records);
       processRecords(records);
     };
 
@@ -38,7 +38,14 @@ export default function ChatList() {
           continue;
         }
 
-        // console.log("send message", record);
+        const myRecord = parseAleoStruct(record.recordPlaintext);
+
+        const canFetchRecord =
+          normalize(myRecord.owner) === normalize(address);
+
+        if (!canFetchRecord) {
+          continue;
+        }
 
         try {
           // ✅ Decrypt using recordCiphertext

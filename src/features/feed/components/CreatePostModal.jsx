@@ -9,26 +9,12 @@ import { stringToField, fetchPost } from "../../../lib/aleo/index";
 import { ALEO_PROGRAM_NAME, ALEO_FEE } from "../../../config/config";
 import { usePostStore } from "../../../store/usePostStore";
 
-// const categories = [
-//   "Whistleblowing",
-//   "Private Communities",
-//   "Finance",
-//   "General",
-//   "Technology",
-//   "Governance",
-//   "Security",
-//   "Other",
-// ];
-
 const CATEGORY_MAP = {
   Finances: 1,
   Sport: 2,
   Tech: 3,
-  Games: 4,
-  World: 5,
-  Science: 6,
-  Art: 7,
-  Entertainment: 8,
+  Science: 4,
+  Art: 5,
 };
 const categories = Object.keys(CATEGORY_MAP);
 const MAX_CHARS = 30;

@@ -1,34 +1,30 @@
 import { create } from "zustand";
-import { FriendUser, FriendRequest } from "../features/friends/types";
+import { FriendUser } from "../features/friends/types";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { ALEO_FEE, ALEO_PROGRAM_NAME } from "../config/config";
 import { parseAleoStruct } from "../lib/aleo/index";
 interface FriendsState {
   friends: FriendUser[];
-  incoming: FriendRequest[];
-  outgoing: FriendRequest[];
-  tab: "friends" | "incoming" | "outgoing";
+  blocked: FriendUser[];
+  tab: "friends" | "blocked";
 
   setTab: (tab: FriendsState["tab"]) => void;
 
   setFriends: (friends: FriendUser[]) => void;
-  setIncoming: (requests: FriendRequest[]) => void;
-  setOutgoing: (requests: FriendRequest[]) => void;
+  setBlocked: (requests: FriendUser[]) => void;
 
   syncFriendRecords: () => Promise<void>;
 }
 
 export const useFriendsStore = create<FriendsState>((set, get) => ({
   friends: [],
-  incoming: [],
-  outgoing: [],
+  blocked: [],
   tab: "friends",
 
   setTab: (tab) => set({ tab }),
 
   setFriends: (friends) => set({ friends }),
-  setIncoming: (incoming) => set({ incoming }),
-  setOutgoing: (outgoing) => set({ outgoing }),
+  setBlocked: (blocked) => set({ blocked }),
 
   // 🔥 Sync from Aleo on-chain records
   syncFriendRecords: async () => {
@@ -47,17 +43,16 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       if (!records?.length) return;
 
-      const incomingList: FriendRequest[] = [];
-      const outgoingList: FriendRequest[] = [];
+      const blockedList: FriendUser[] = [];
       const friendsList: FriendUser[] = [];
 
-      for (const record of records) {
-        if (record.functionName !== "add_friend") continue;
+      for (const record of records as any[]) {
+        if ((record as any).functionName !== "add_friend") continue;
         if (record.spent) continue;
 
         const decrypted = parseAleoStruct(
           await decrypt(record.recordCiphertext),
-        );
+        ) as any;
         if (!decrypted) continue;
 
         const owner = decrypted.owner;
@@ -78,21 +73,22 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
             owner === address ? friend.slice(0, 10) : owner.slice(0, 10),
           address: owner === address ? friend : owner,
           blockHeight: record.blockHeight,
+          isOnline: false,
           timestamp: record.blockTimestamp,
           transactionId: record.transactionId?.trim(),
         };
 
         if (status === 1) {
           // Accepted friend
-          friendsList.push({ ...baseObject, isOnline: false });
+          friendsList.push(baseObject);
         } else {
           // Pending
           if (owner === address) {
             // You sent request
-            outgoingList.push(baseObject);
+            friendsList.push(baseObject);
           } else {
             // Someone sent you request
-            incomingList.push(baseObject);
+            blockedList.push(baseObject);
           }
         }
       }
@@ -103,8 +99,7 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
 
       set({
         friends: dedupe(friendsList),
-        incoming: dedupe(incomingList),
-        outgoing: dedupe(outgoingList),
+        blocked: dedupe(blockedList),
       });
     } catch (err) {
       console.error("Failed to sync friend records:", err);

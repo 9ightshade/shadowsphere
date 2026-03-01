@@ -14,11 +14,9 @@ import { fieldToString, parseAleoStruct } from "../../lib/aleo/index";
 export default function FriendsPage() {
   const {
     friends,
-    incoming,
-    outgoing,
+    blocked,
     setFriends,
-    setIncoming,
-    setOutgoing,
+    setBlocked,
     syncFriendRecords,
     setTab,
     tab,
@@ -29,35 +27,36 @@ export default function FriendsPage() {
 
   useEffect(() => {
     if (!connected || !address) {
-      setIncoming([]);
-      setOutgoing([]);
+      setBlocked([]);
       return;
     }
 
     const fetchFriendRequests = async () => {
-
       console.log("fetching...");
-      
+
       try {
         const records = await requestRecords(PROGRAM_ID, false);
 
         console.log("fetched friends record", records);
 
         if (!records) {
-          setIncoming([]);
-          setOutgoing([]);
+          setBlocked([]);
           return;
         }
 
-        const incomingList = [];
-        const outgoingList = [];
+        const friendsList = [];
+        const blockedList = [];
 
         const normalize = (a) => a?.replace(".private", "").trim();
 
         const me = normalize(address);
 
         for (const record of records) {
-          if (record.functionName !== "add_friend") continue;
+          if (
+            record.functionName !== "add_friend" &&
+            record.functionName !== "block_friend"
+          )
+            continue;
           if (record.spent) continue;
 
           const decrypted = await decrypt(record.recordCiphertext);
@@ -91,21 +90,21 @@ export default function FriendsPage() {
           };
 
           if (isOutgoing) {
-            outgoingList.push(baseObject);
+            friendsList.push(baseObject);
           } else {
-            incomingList.push(baseObject);
+            blockedList.push(baseObject);
           }
         }
 
         const dedupe = (arr) =>
           Array.from(new Map(arr.map((r) => [r.id, r])).values());
 
-        setIncoming(dedupe(incomingList));
-        setOutgoing(dedupe(outgoingList));
+        setFriends(dedupe(friendsList));
+        setBlocked(dedupe(blockedList));
       } catch (err) {
         console.error("Friend record sync failed:", err);
-        setIncoming([]);
-        setOutgoing([]);
+        setFriends([]);
+        setBlocked([]);
       }
     };
 
@@ -114,12 +113,11 @@ export default function FriendsPage() {
 
   const counts = {
     friends: friends?.length,
-    incoming: incoming?.length,
-    outgoing: outgoing?.length,
+    blocked: blocked?.length,
   };
 
   const currentList =
-    tab === "friends" ? friends : tab === "incoming" ? incoming : outgoing;
+    tab === "friends" ? friends : tab === "blocked" ? blocked : [];
 
   return (
     <>

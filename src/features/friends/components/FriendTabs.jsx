@@ -4,13 +4,12 @@ import { Users, Bell, Clock } from "lucide-react";
 
 const TAB_META = {
   friends:  { label: "Friends",  icon: Users },
-  incoming: { label: "Requests", icon: Bell  },
-  outgoing: { label: "Pending",  icon: Clock },
+  blocked: { label: "Blocked",  icon: Clock },
 };
 
 export default function FriendTabs({ counts = {} }) {
   const { tab, setTab } = useFriendsStore();
-  const tabs = ["friends", "incoming", "outgoing"];
+  const tabs = ["friends", "blocked"];
 
   return (
     <div className="flex items-center gap-2 p-1 rounded-2xl bg-[var(--color-surface-2)] border border-[var(--color-border)]">

@@ -23,7 +23,7 @@ import {
 } from "../../config/config";
 import { usePostSync } from "../../hooks/usePostSync";
 
-const CATEGORIES = ["All", "Whistleblowing", "Finance", "Private Communities"];
+const CATEGORIES = ["All", "Finance", "Sports", "Tech", "Science", "Art"];
 const SORT_OPTIONS = [
   { label: "Latest", icon: TrendingUp },
   { label: "Hot", icon: Flame },
@@ -47,11 +47,15 @@ export default function FeedPage() {
   const mapCategory = (cat) => {
     switch (Number(cat)) {
       case 1:
-        return "Whistleblowing";
-      case 2:
         return "Finance";
+      case 2:
+        return "Sports";
       case 3:
-        return "Private Communities";
+        return "Tech";
+      case 4:
+        return "Science";
+      case 5:
+        return "Art";
       default:
         return "All";
     }
@@ -74,16 +78,18 @@ export default function FeedPage() {
         if (!data) {
           continue;
         }
-        console.log("Raw post:", typeof data);
+        // console.log("Raw post:", data);
 
         const formattedPost = parseAleoPost(data, postId);
 
-        if (!formattedPost?.id) continue;
+        console.log("formatted post", formattedPost);
 
+        if (!formattedPost?.id) continue;
+        formattedPost.category = mapCategory(formattedPost.category);
         newPosts.push(formattedPost);
         fetchedCount++;
-      } catch {
-        console.warn(`Skipping post ${postId}`);
+      } catch (err) {
+        console.warn(`Skipping post ${postId}:`, err);
       }
     }
 
