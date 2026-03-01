@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 import { Heart, MessageCircle, Gift } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import GiftModal from "./GiftModal";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { usePostStore } from "../../../store/usePostStore";
@@ -24,7 +24,10 @@ export default function PostActions({
   const { refreshPostById } = usePostStore();
 
   console.log("likes", likes);
-  
+
+  useEffect(() => {
+    setCount(likes);
+  }, [likes]);
 
   const handleLike = async () => {
     if (liked || loading) return;
@@ -58,9 +61,8 @@ export default function PostActions({
 
         if (status.status === "Accepted") {
           console.log("Like confirmed on-chain ✅");
-          refreshPostById(postId);
+          await refreshPostById(postId);
           setLiked(true);
-          incrementLikes(postId);
           return;
         }
 
@@ -84,11 +86,15 @@ export default function PostActions({
       <div className="flex items-center gap-6 text-[var(--color-text-secondary)] text-sm pt-3">
         <button
           onClick={handleLike}
+          disabled={loading}
           className={`flex items-center gap-2 transition transform ${
-            liked ? "text-[var(--color-primary)] scale-110" : ""
-          }`}>
+            liked || count > 0
+              ? "text-[var(--color-primary)]"
+              : "hover:text-[var(--color-primary)]"
+          } ${liked ? "scale-110" : ""}`}>
           <Heart size={16} fill={liked ? "currentColor" : "none"} />
-          {count}
+
+          {count > 0 && <span className="tabular-nums">{count}</span>}
         </button>
 
         <button

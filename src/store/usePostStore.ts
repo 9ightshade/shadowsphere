@@ -4,7 +4,7 @@ import { parseAleoPost } from "../lib/aleo/index";
 import { ALEO_PROGRAM_NAME } from "../config/config";
 
 export interface Post {
-  id: string;
+  id: number;
   alias: string;
   reputation: number;
   verified: boolean;
@@ -60,7 +60,7 @@ export const usePostStore = create<PostState>()(
           posts: state.posts
             .filter((p): p is Post => p !== null)
             .map((post) =>
-              post.id === postId ? { ...post, likes: post.likes + 1 } : post,
+              post.id === Number(postId) ? { ...post, likes: post.likes + 1 } : post,
             ),
         }));
       },
@@ -70,7 +70,7 @@ export const usePostStore = create<PostState>()(
           posts: state.posts
             .filter((p): p is Post => p !== null)
             .map((post) =>
-              post.id === postId
+              post.id === Number(postId)
                 ? { ...post, comments: post.comments + 1 }
                 : post,
             ),

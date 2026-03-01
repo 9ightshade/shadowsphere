@@ -35,8 +35,13 @@ export default function FriendsPage() {
     }
 
     const fetchFriendRequests = async () => {
+
+      console.log("fetching...");
+      
       try {
         const records = await requestRecords(PROGRAM_ID, false);
+
+        console.log("fetched friends record", records);
 
         if (!records) {
           setIncoming([]);
