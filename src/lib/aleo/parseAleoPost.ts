@@ -5,8 +5,10 @@ type AleoRaw = Record<string, any> | string | null;
 
 const cleanAleoValue = (value: any): string =>
   String(value)
+    .replace(/\.private|\.public/g, "")
     .replace(/u\d+$/, "")
-    .replace(/field$/, "");
+    .replace(/field$/, "")
+    .trim();
 
 const parseStructString = (raw: string): Record<string, string> => {
   return Object.fromEntries(
@@ -41,15 +43,21 @@ export function parseAleoPost(
 
   const categoryMap: Record<number, string> = {
     1: "Finance",
-    2: "Tech",
-    3: "Sports",
-    4: "science",
-    5: "Arts",
+    2: "Sports",
+    3: "Tech",
+    4: "Science",
+    5: "Art",
   };
 
-  const categoryRaw = parsed.category
-    ? Number(cleanAleoValue(parsed.category))
-    : 0;
+const categoryRaw = parsed.category
+  ? Number(String(parsed.category).match(/\d+/)?.[0] ?? 0)
+  : 0;
+
+  console.log("category raw", categoryRaw);
+
+  console.log("raw:", parsed.category);
+  console.log("cleaned:", cleanAleoValue(parsed.category));
+  console.log("number:", Number(cleanAleoValue(parsed.category)));
 
   return {
     id,

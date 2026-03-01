@@ -23,7 +23,7 @@ export default function PostActions({
   const [commentOpen, setCommentOpen] = useState(false);
   const { refreshPostById } = usePostStore();
 
-  console.log("likes", likes);
+  // console.log("likes", likes);
 
   useEffect(() => {
     setCount(likes);
@@ -37,7 +37,7 @@ export default function PostActions({
 
       const formattedInput = `${postId}u32`;
 
-      console.log("Submitting like TX:", formattedInput);
+      // console.log("Submitting like TX:", formattedInput);
 
       const result = await executeTransaction({
         program: ALEO_PROGRAM_NAME,

@@ -78,14 +78,14 @@ export default function FeedPage() {
         if (!data) {
           continue;
         }
-        // console.log("Raw post:", data);
+        console.log("Raw post:", typeof data);
 
         const formattedPost = parseAleoPost(data, postId);
 
         console.log("formatted post", formattedPost);
 
         if (!formattedPost?.id) continue;
-        formattedPost.category = mapCategory(formattedPost.category);
+
         newPosts.push(formattedPost);
         fetchedCount++;
       } catch (err) {
@@ -140,10 +140,7 @@ export default function FeedPage() {
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
-    // console.log("Connected:", connected, address);
-    // console.log("decrypt post", decryptPost);
-  }, [connected, address]);
+  useEffect(() => {}, [connected, address]);
   return (
     <div className="relative flex flex-col gap-6 feed-root">
       {/* ── Toolbar ──────────────────────────────────── */}
