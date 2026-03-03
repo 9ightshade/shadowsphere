@@ -12,8 +12,15 @@ interface FriendsState {
 
   setFriends: (friends: FriendUser[]) => void;
   setBlocked: (requests: FriendUser[]) => void;
+  blockFriendLocally: (address: string) => void;
 
-  syncFriendRecords: () => Promise<void>;
+  // syncFriendRecords: () => Promise<void>;
+  syncFriendRecords: (wallet: {
+    connected: boolean;
+    address?: string;
+    requestRecords: any;
+    decrypt: any;
+  }) => Promise<void>;
 }
 
 export const useFriendsStore = create<FriendsState>((set, get) => ({
@@ -26,76 +33,76 @@ export const useFriendsStore = create<FriendsState>((set, get) => ({
   setFriends: (friends) => set({ friends }),
   setBlocked: (blocked) => set({ blocked }),
 
+  blockFriendLocally: (address) =>
+    set((state) => {
+      const friend = state.friends.find((f) => f.address === address);
+
+      if (!friend) return state;
+
+      return {
+        friends: state.friends.filter((f) => f.address !== address),
+        blocked: [...state.blocked, friend],
+      };
+    }),
+
   // 🔥 Sync from Aleo on-chain records
-  syncFriendRecords: async () => {
+  syncFriendRecords: async (wallet) => {
     try {
-      // Access wallet
-      const wallet = useWallet();
       const { connected, address, requestRecords, decrypt } = wallet;
 
       if (!connected || !address) return;
 
-      const PROGRAM_ID = ALEO_PROGRAM_NAME;
-
-      const records = await requestRecords(PROGRAM_ID, false);
-
-      console.log("friends records", records);
-
+      const records = await requestRecords(ALEO_PROGRAM_NAME, false);
       if (!records?.length) return;
 
-      const blockedList: FriendUser[] = [];
       const friendsList: FriendUser[] = [];
+      const blockedList: FriendUser[] = [];
 
       for (const record of records as any[]) {
-        if ((record as any).functionName !== "add_friend") continue;
         if (record.spent) continue;
 
         const decrypted = parseAleoStruct(
           await decrypt(record.recordCiphertext),
         ) as any;
+
         if (!decrypted) continue;
 
         const owner = decrypted.owner;
-        const friend = decrypted.to;
+        const to = decrypted.to;
         const status = Number(decrypted.status ?? 0);
 
-        if (!owner || !friend) continue;
+        if (!owner || !to) continue;
 
-        const baseObject = {
+        const counterparty = owner === address ? to : owner;
+
+        const baseObject: FriendUser = {
           id: record.commitment,
+          alias: `aleo...${counterparty.slice(-6)}`,
+          address: counterparty,
+          username: counterparty.slice(0, 10),
           from: {
-            alias:
-              owner === address
-                ? `aleo...${friend.slice(-6)}`
-                : `aleo...${owner.slice(-6)}`,
+            alias: `aleo...${counterparty.slice(-6)}`,
           },
-          username:
-            owner === address ? friend.slice(0, 10) : owner.slice(0, 10),
-          address: owner === address ? friend : owner,
           blockHeight: record.blockHeight,
           isOnline: false,
           timestamp: record.blockTimestamp,
           transactionId: record.transactionId?.trim(),
         };
 
-        if (status === 1) {
-          // Accepted friend
-          friendsList.push(baseObject);
-        } else {
-          // Pending
-          if (owner === address) {
-            // You sent request
+        // 🔥 differentiate by function name
+        if (record.functionName === "add_friend") {
+          if (status === 1) {
             friendsList.push(baseObject);
-          } else {
-            // Someone sent you request
-            blockedList.push(baseObject);
           }
+        }
+
+        if (record.functionName === "block_user") {
+          blockedList.push(baseObject);
         }
       }
 
-      // Deduplicate
-      const dedupe = (arr) =>
-        Array.from(new Map(arr.map((r) => [r.id, r])).values());
+      const dedupe = (arr: FriendUser[]) =>
+        Array.from(new Map(arr.map((r) => [r.address, r])).values());
 
       set({
         friends: dedupe(friendsList),

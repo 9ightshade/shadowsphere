@@ -10,6 +10,7 @@ import { Users, Shield, UserPlus } from "lucide-react";
 import { ALEO_PROGRAM_NAME } from "../../config/config";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { fieldToString, parseAleoStruct } from "../../lib/aleo/index";
+import NewMessageModal from "../messages/components/NewMessageModal";
 
 export default function FriendsPage() {
   const {
@@ -22,8 +23,16 @@ export default function FriendsPage() {
     tab,
   } = useFriendsStore();
   const [inviteModalOpen, setInviteModalOpen] = useState(false);
+  const [messageModalOpen, setMessageModalOpen] = useState(false);
+  const [selectedAddress, setSelectedAddress] = useState("");
   const { connected, address, requestRecords, decrypt } = useWallet();
   const PROGRAM_ID = ALEO_PROGRAM_NAME;
+
+  const handleOpenMessage = (friendAddress) => {
+    console.log("Opening message modal for", friendAddress);
+    setSelectedAddress(friendAddress);
+    setMessageModalOpen(true);
+  };
 
   useEffect(() => {
     if (!connected || !address) {
@@ -35,7 +44,7 @@ export default function FriendsPage() {
       console.log("fetching...");
 
       try {
-        const records = await requestRecords(PROGRAM_ID, false);
+        const records = await requestRecords(PROGRAM_ID, true);
 
         console.log("fetched friends record", records);
 
@@ -194,7 +203,7 @@ export default function FriendsPage() {
                 className="friend-item"
                 style={{ animationDelay: `${i * 60}ms` }}>
                 {tab === "friends" ? (
-                  <FriendCard user={item} />
+                  <FriendCard user={item} onMessageClick={handleOpenMessage} />
                 ) : (
                   <RequestCard request={item} type={tab} />
                 )}
@@ -253,6 +262,15 @@ export default function FriendsPage() {
       <InviteFriendModal
         open={inviteModalOpen}
         onClose={() => setInviteModalOpen(false)}
+      />
+
+      <NewMessageModal
+        open={messageModalOpen}
+        preFilledAddress={selectedAddress}
+        onClose={() => {
+          setMessageModalOpen(false);
+          setSelectedAddress("");
+        }}
       />
     </>
   );

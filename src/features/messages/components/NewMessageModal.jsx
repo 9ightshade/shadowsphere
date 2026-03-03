@@ -9,7 +9,7 @@ import {
   Check,
   AlertCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ALEO_PROGRAM_NAME,
   ALEO_FEE,
@@ -20,17 +20,28 @@ import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 
 const MAX_MESSAGE_LENGTH = 30;
 
-export default function NewMessageModal({ open, onClose }) {
-  const [address, setAddress] = useState("");
+export default function NewMessageModal({ open, onClose, preFilledAddress }) {
+  const [address, setAddress] = useState(preFilledAddress || "");
   const [message, setMessage] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
   const [copied, setCopied] = useState(false);
   const { executeTransaction, transactionStatus } = useWallet();
+
+  useEffect(() => {
+    if (preFilledAddress) {
+      setAddress(preFilledAddress);
+    }
+  }, [preFilledAddress]);
+
+  console.log("prefilled address", address);
+
   if (!open) return null;
 
   // Validate Aleo address
   const isValidAddress = address.startsWith("aleo1") && address.length === 63;
+
+  console.log("isvalidaddress", isValidAddress);
 
   // Message validation
   const charCount = message.length;

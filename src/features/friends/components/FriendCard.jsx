@@ -1,16 +1,88 @@
 // ─── FriendCard.jsx ───────────────────────────────────────────────────────────
+import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { useFriendsStore } from "../../../store/useFriendsStore";
 import { MessageSquare, UserMinus } from "lucide-react";
 import { useState } from "react";
+import { ALEO_PROGRAM_NAME, ALEO_FEE } from "../../../config/config";
+import normalize from "../../../lib/aleo/normalize";
 
-export default function FriendCard({ user }) {
-  const { removeFriend } = useFriendsStore();
+export default function FriendCard({ user, onMessageClick }) {
+  const { blockFriendLocally, syncFriendRecords } = useFriendsStore();
   const [removing, setRemoving] = useState(false);
 
+  const {
+    executeTransaction,
+    transactionStatus,
+    connected,
+    address,
+    requestRecords,
+    decrypt,
+  } = useWallet();
+  const friendAddress = normalize(user.address || user.id);
   const handleRemove = async () => {
-    setRemoving(true);
-    await new Promise((r) => setTimeout(r, 300));
-    removeFriend(user.id);
+    if (!connected) return;
+    if (removing) return;
+
+    try {
+      setRemoving(true);
+
+      console.log("Blocking friend:", friendAddress);
+
+      // 1️⃣ Submit transaction
+      const result = await executeTransaction({
+        program: ALEO_PROGRAM_NAME,
+        function: "block_user",
+        inputs: [friendAddress],
+        fee: ALEO_FEE,
+        privateFee: false,
+      });
+
+      const txId = result?.transactionId;
+      if (!txId) throw new Error("Transaction ID missing");
+
+      console.log("TX submitted:", txId);
+
+      // 2️⃣ Poll for confirmation
+      let attempts = 0;
+      const maxAttempts = 20;
+
+      while (attempts < maxAttempts) {
+        await new Promise((resolve) => setTimeout(resolve, 3000));
+
+        const status = await transactionStatus(txId);
+
+        console.log("TX status:", status.status);
+
+        if (status.status === "Accepted") {
+          console.log("Block confirmed on-chain ✅");
+
+          // 🔥 Optimistic local update
+          blockFriendLocally(friendAddress);
+
+          // 🔥 Authoritative sync from Aleo
+          await syncFriendRecords({
+            connected,
+            address,
+            requestRecords,
+            decrypt,
+          });
+
+          return;
+        }
+
+        if (status.status === "Rejected") {
+          throw new Error("Transaction rejected");
+        }
+
+        attempts++;
+      }
+
+      throw new Error("Transaction confirmation timeout");
+    } catch (err) {
+      console.error("Remove friend failed:", err.message);
+    } finally {
+      setRemoving(false);
+    }
   };
 
   const alias = user.from?.alias ?? user.name ?? user.username ?? "Unknown";
@@ -24,7 +96,7 @@ export default function FriendCard({ user }) {
   return (
     <div
       className={`
-      group relative flex items-center gap-4 p-4 rounded-2xl
+      group relative flex items-center gap-4 p-4 rounded-2xl w-full
       bg-[var(--color-surface-2)] border border-[var(--color-border)]
       hover:border-indigo-500/20 hover:bg-indigo-500/5
       transition-all duration-300 overflow-hidden
@@ -81,8 +153,14 @@ export default function FriendCard({ user }) {
       </div>
 
       {/* Actions */}
-      <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-        <button className="p-2 rounded-xl border border-transparent hover:border-indigo-500/30 hover:bg-indigo-500/10 active:scale-90 transition-all duration-200">
+      <div className="flex items-center gap-2  group-hover:opacity-100 transition-opacity duration-300">
+        <button
+          onClick={() => {
+            if (onMessageClick) {
+              onMessageClick(friendAddress);
+            }
+          }}
+          className="p-2 rounded-xl border border-transparent hover:border-indigo-500/30 hover:bg-indigo-500/10 active:scale-90 transition-all duration-200">
           <MessageSquare
             size={15}
             className="text-[var(--color-text-secondary)] hover:text-indigo-400"
@@ -90,10 +168,10 @@ export default function FriendCard({ user }) {
         </button>
         <button
           onClick={handleRemove}
-          className="p-2 rounded-xl border border-transparent hover:border-rose-500/30 hover:bg-rose-500/10 active:scale-90 transition-all duration-200">
+          className="p-2 rounded-xl border  border-rose-500/30 bg-rose-500/10 active:scale-90 transition-all duration-200">
           <UserMinus
             size={15}
-            className="text-[var(--color-text-secondary)] hover:text-rose-400 transition-colors"
+            className="text-[var(--color-text-secondary)] cursor-pointer hover:text-rose-400 transition-colors"
           />
         </button>
       </div>

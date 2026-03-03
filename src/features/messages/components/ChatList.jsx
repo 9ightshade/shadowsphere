@@ -6,22 +6,12 @@ import { useState, useEffect } from "react";
 import { useWallet } from "@provablehq/aleo-wallet-adaptor-react";
 import { ALEO_PROGRAM_NAME } from "../../../config/config";
 import { fieldToString, parseAleoStruct } from "../../../lib/aleo";
+import normalize from "../../../lib/aleo/normalize";
 export default function ChatList() {
   const { conversations } = useMessageStore();
   const [query, setQuery] = useState("");
   const { requestRecords, decrypt, address } = useWallet();
-  function normalize(value) {
-    if (!value) return value;
-
-    return value
-      .toString()
-      .replace(".private", "")
-      .replace(".public", "")
-      .replace("field", "")
-      .replace("u32", "")
-      .replace("u8", "")
-      .trim();
-  }
+  
 
   useEffect(() => {
     let interval;
