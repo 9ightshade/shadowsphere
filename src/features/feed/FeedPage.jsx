@@ -78,7 +78,7 @@ export default function FeedPage() {
         if (!data) {
           continue;
         }
-        console.log("Raw post:", typeof data);
+        console.log("Raw post:", data);
 
         const formattedPost = parseAleoPost(data, postId);
 

@@ -1,7 +1,7 @@
 // src/config.js
 
 // --- ALEO PROGRAM SETTINGS ---
-export const ALEO_PROGRAM_NAME = "shadowsphere_social15.aleo";
+export const ALEO_PROGRAM_NAME = "shadowsphere_social16.aleo";
 
 // --- TRANSACTION SETTINGS ---
 export const ALEO_FEE = 100_000; // 0.1 Aleo Credits
